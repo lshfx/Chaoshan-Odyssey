@@ -190,11 +190,131 @@
 
   const onMarkerTap = (e : any) => {
     const markerId = e.detail.markerId
+
+    // 跳过玩家位置标记（ID: 999）
+    if (markerId === 999) {
+      console.log('点击了玩家位置标记，忽略')
+      return
+    }
+
     const poi = gameStore.getPOIById(markerId)
-    if (poi) uni.showToast({ title: `进入${poi.name}`, icon: 'none' })
+
+    if (!poi) {
+      console.warn('未找到POI数据:', markerId)
+      return
+    }
+
+    console.log('点击POI:', poi.name, 'ID:', poi.id)
+
+    // 计算距离
+    const distance = calculateDistance(
+      gameStore.userLocation.latitude,
+      gameStore.userLocation.longitude,
+      poi.latitude,
+      poi.longitude
+    )
+
+    console.log('距离POI:', distance, '米')
+
+    // 开发环境调试特权：允许直接进入
+    const isDevEnvironment = process.env.NODE_ENV === 'development' ||
+                            uni.getSystemInfoSync().platform === 'devtools'
+
+    if (isDevEnvironment) {
+      console.log('开发环境：直接进入AR模式')
+      enterARMode(poi)
+      return
+    }
+
+    // 生产环境：距离校验（100米范围内）
+    if (distance <= 100) {
+      console.log('距离达标，进入AR模式')
+      enterARMode(poi)
+    } else {
+      console.log('距离过远，无法进入')
+      uni.showToast({
+        title: `太远了，请走近一点（当前距离：${distance}米）`,
+        icon: 'none',
+        duration: 3000
+      })
+    }
   }
 
   const onMapTap = () => { }
+
+// 计算两点之间的距离（米）
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371000 // 地球半径（米）
+  const lat1Rad = lat1 * Math.PI / 180
+  const lat2Rad = lat2 * Math.PI / 180
+  const deltaLatRad = (lat2 - lat1) * Math.PI / 180
+  const deltaLonRad = (lon2 - lon1) * Math.PI / 180
+
+  const a = Math.sin(deltaLatRad / 2) * Math.sin(deltaLatRad / 2) +
+            Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+            Math.sin(deltaLonRad / 2) * Math.sin(deltaLonRad / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+  return Math.round(R * c) // 返回米数（四舍五入）
+}
+
+// 进入AR模式
+const enterARMode = (poi: any) => {
+  console.log('准备进入AR模式，POI:', poi.name)
+
+  // 获取该POI对应的NPC ID（这里使用默认逻辑，后续可根据POI类型分配不同NPC）
+  let npcId = 'lin_wenyuan' // 默认NPC
+
+  // 根据POI ID分配对应的NPC（可根据游戏设计调整）
+  switch (poi.id) {
+    case 'jieyang_confucian_temple':
+      npcId = 'lin_wenyuan' // 林文渊守护学宫
+      break
+    case 'kungfu_tea_house':
+      npcId = 'chen_linger' // 陈灵儿精通茶艺
+      break
+    case 'lion_culture_area':
+      npcId = 'lion_master' // 舞狮大师
+      break
+    case 'qiaopi_museum':
+      npcId = 'wang_xiaohong' // 王小红管理侨批
+      break
+    case 'jinxian_gate':
+      npcId = 'old_seal_keeper' // 老印章守护者
+      break
+    default:
+      npcId = 'lin_wenyuan' // 默认NPC
+  }
+
+  // 构建路由参数
+  const url = `/pages/ar/index?npcId=${npcId}&poiId=${poi.id}`
+
+  console.log('跳转到AR页面:', url)
+
+  // 显示进入提示
+  uni.showToast({
+    title: `正在进入${poi.name}`,
+    icon: 'loading',
+    duration: 1000
+  })
+
+  // 延迟跳转，让用户看到提示
+  setTimeout(() => {
+    uni.navigateTo({
+      url: url,
+      success: () => {
+        console.log('成功跳转到AR页面')
+      },
+      fail: (err) => {
+        console.error('跳转到AR页面失败:', err)
+        uni.showToast({
+          title: '进入AR页面失败',
+          icon: 'none'
+        })
+      }
+    })
+  }, 1000)
+}
 
   const checkArrival = () => {
     if (gameStore.targetLocation && gameStore.getDistanceToTarget < 50) {

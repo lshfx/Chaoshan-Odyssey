@@ -50,6 +50,7 @@ export const useGameStore = defineStore('game', () => {
   // 剧情状态
   const storyStage = ref(0) // 当前剧情阶段，默认为0
   const unlockedPoiIds = ref<string[]>([]) // 当前已解锁的地点ID列表
+  const completedPoiIds = ref<string[]>([]) // 当前已完成的地点ID列表
   const currentScript = ref<any[]>([]) // 当前正在播放的对话脚本
   const isDialogueVisible = ref(false) // 控制对话组件显示
 
@@ -278,6 +279,66 @@ export const useGameStore = defineStore('game', () => {
   const updateObjective = (objective: string) => {
     missionStatus.value.currentObjective = objective
     console.log('更新目标:', objective)
+  }
+
+  // 完成任务
+  const completeMission = (poiId: string) => {
+    console.log('完成任务:', poiId)
+
+    // 1. 将POI加入已完成列表
+    if (!completedPoiIds.value.includes(poiId)) {
+      completedPoiIds.value.push(poiId)
+      console.log('POI已完成:', poiId, '已完成总数:', completedPoiIds.value.length)
+    }
+
+    // 2. 解锁下一个剧情阶段
+    storyStage.value += 1
+    console.log('剧情阶段推进到:', storyStage.value)
+
+    // 3. 解锁下一个POI
+    unlockNextPOI(poiId)
+
+    // 4. 更新已解锁POI列表（移除当前POI，添加下一个POI）
+    updateUnlockedPOIs(poiId)
+
+    // 5. 保存进度
+    saveProgress()
+
+    // 6. 显示完成提示
+    const poi = getPOIById(poiId)
+    if (poi) {
+      console.log('恭喜完成:', poi.name)
+    }
+  }
+
+  // 解锁下一个POI
+  const unlockNextPOI = (currentPoiId: string) => {
+    const allPOIs = currentCityPOIs.value
+    const currentIndex = allPOIs.findIndex(poi => poi.id === currentPoiId)
+
+    if (currentIndex !== -1 && currentIndex < allPOIs.length - 1) {
+      const nextPOI = allPOIs[currentIndex + 1]
+      if (!unlockedPoiIds.value.includes(nextPOI.id)) {
+        unlockedPoiIds.value.push(nextPOI.id)
+        console.log('解锁下一个POI:', nextPOI.name)
+
+        // 自动设置为目标位置
+        setTargetLocation(nextPOI.latitude, nextPOI.longitude, nextPOI.name)
+      }
+    } else if (currentIndex === allPOIs.length - 1) {
+      // 所有POI都已完成
+      missionStatus.value.gameCompleted = true
+      console.log('恭喜！所有任务已完成！')
+    }
+  }
+
+  // 更新已解锁POI列表
+  const updateUnlockedPOIs = (completedPoiId: string) => {
+    const currentPoiIndex = unlockedPoiIds.value.indexOf(completedPoiId)
+    if (currentPoiIndex !== -1) {
+      unlockedPoiIds.value.splice(currentPoiIndex, 1)
+      console.log('从解锁列表移除已完成POI:', completedPoiId)
+    }
   }
 
   // 检查并解锁下一个POI
@@ -543,6 +604,7 @@ export const useGameStore = defineStore('game', () => {
     targetLocation,
     storyStage,
     unlockedPoiIds,
+    completedPoiIds,
     currentScript,
     isDialogueVisible,
 
@@ -567,6 +629,9 @@ export const useGameStore = defineStore('game', () => {
     addClue,
     completeTask,
     updateObjective,
+    completeMission, // 新增：任务完成逻辑
+    unlockNextPOI, // 新增：解锁下一个POI
+    updateUnlockedPOIs, // 新增：更新已解锁POI列表
     checkAndUnlockNextPOI,
     saveProgress, // 新增
     loadProgress, // 新增
