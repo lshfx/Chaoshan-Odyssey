@@ -10,7 +10,7 @@
   <view v-else class="location-controller expanded">
     <view class="controller-header">
       <text class="controller-title">位置控制器</text>
-      <view class="minimize-btn" @tap="toggleController">−</view>
+      <view class="close-btn" @tap="toggleController">×</view>
     </view>
 
     <!-- 当前位置显示 -->
@@ -19,6 +19,11 @@
       <text class="location-coords">
         {{ userLocation.latitude.toFixed(4) }}, {{ userLocation.longitude.toFixed(4) }}
       </text>
+    </view>
+
+    <!-- 城市信息 -->
+    <view class="city-info">
+      <text class="city-name">{{ currentCityData.cityName }} ({{ currentPois.length }}个地点)</text>
     </view>
 
     <!-- 方向控制按钮 -->
@@ -36,60 +41,59 @@
       <view></view>
     </view>
 
-    <!-- 预设位置按钮 -->
-    <view class="preset-locations">
-      <view
-        class="preset-btn"
-        v-for="location in presetLocations"
-        :key="location.id"
-        @tap="moveToPreset(location)"
-      >
-        <text class="preset-icon">{{ location.icon }}</text>
-        <text class="preset-name">{{ location.name }}</text>
-      </view>
+    <!-- 动态POI传送按钮 -->
+    <view class="poi-section">
+      <text class="section-title">快速传送</text>
+      <scroll-view class="poi-list" scroll-y="true">
+        <view
+          class="poi-btn"
+          v-for="poi in currentPois"
+          :key="poi.id"
+          @tap="teleportToPOI(poi)"
+        >
+          <view class="poi-info">
+            <text class="poi-name">{{ poi.name }}</text>
+            <text class="poi-desc">{{ poi.description || '快速传送' }}</text>
+          </view>
+          <text class="poi-arrow">→</text>
+        </view>
+
+        <!-- 无数据提示 -->
+        <view v-if="currentPois.length === 0" class="no-pois-tip">
+          <text class="tip-text">当前城市暂无可用地点</text>
+        </view>
+      </scroll-view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useGameStore } from '@/stores/useGameStore'
+import { gameData } from '@/mock/gameData'
 
 const gameStore = useGameStore()
 const userLocation = ref(gameStore.userLocation)
 const isCollapsed = ref(true) // 默认收折状态
 
-// 预设位置
-const presetLocations = [
-  {
-    id: 'confucian_temple',
-    name: '揭阳学宫',
-    latitude: 23.5436,
-    longitude: 116.3683,
-    icon: '🏛️'
-  },
-  {
-    id: 'jinxian_gate',
-    name: '进贤门',
-    latitude: 23.5360,
-    longitude: 116.3560,
-    icon: '🚪'
-  },
-  {
-    id: 'lion_culture',
-    name: '青狮文化区',
-    latitude: 23.5338,
-    longitude: 116.3715,
-    icon: '🦁'
-  },
-  {
-    id: 'kungfu_tea',
-    name: '功夫茶馆',
-    latitude: 23.5316,
-    longitude: 116.3642,
-    icon: '🍵'
+// 引入游戏数据
+// 获取当前城市数据
+const currentCityData = computed(() => {
+  const cityId = gameStore.currentCity
+  return gameData[cityId as keyof typeof gameData] || gameData.jieyang
+})
+
+// 计算当前城市的POI列表
+const currentPois = computed(() => {
+  const cityId = gameStore.currentCity
+  const cityData = gameData[cityId as keyof typeof gameData]
+
+  if (!cityData || !cityData.pois) {
+    return []
   }
-]
+
+  return cityData.pois.filter(poi => poi.latitude && poi.longitude)
+})
 
 // 移动位置（微调）
 const moveLocation = (deltaLng: number, deltaLat: number) => {
@@ -103,20 +107,40 @@ const moveLocation = (deltaLng: number, deltaLat: number) => {
 
 // 移动到中心
 const moveToCenter = () => {
-  gameStore.updateUserLocation(23.5360, 116.3560)
+  // 使用当前城市的第一个POI作为中心点，如果没有则使用默认坐标
+  const defaultCenter = {
+    latitude: 23.5360,
+    longitude: 116.3560
+  }
+
+  if (currentPois.value.length > 0) {
+    const firstPoi = currentPois.value[0]
+    gameStore.updateUserLocation(firstPoi.latitude, firstPoi.longitude)
+  } else {
+    gameStore.updateUserLocation(defaultCenter.latitude, defaultCenter.longitude)
+  }
+
   userLocation.value = gameStore.userLocation
 }
 
-// 移动到预设位置
-const moveToPreset = (location: any) => {
-  gameStore.updateUserLocation(location.latitude, location.longitude)
+// 传送到指定POI
+const teleportToPOI = (poi: any) => {
+  if (!poi || !poi.latitude || !poi.longitude) {
+    uni.showToast({
+      title: '该地点无法传送',
+      icon: 'none'
+    })
+    return
+  }
+
+  gameStore.updateUserLocation(poi.latitude, poi.longitude)
   userLocation.value = gameStore.userLocation
 
-  // 同时设置为目标位置，方便测试
-  gameStore.setTargetLocation(location.latitude, location.longitude, location.name)
+  // 设置为目标位置
+  gameStore.setTargetLocation(poi.latitude, poi.longitude, poi.name)
 
   uni.showToast({
-    title: `已传送到${location.name}`,
+    title: `已传送到${poi.name}`,
     icon: 'success'
   })
 }
@@ -168,13 +192,15 @@ const toggleController = () => {
     position: fixed;
     left: 30rpx;
     bottom: 200rpx; // 为tabbar留出空间
-    width: 320rpx;
-    background: rgba(0, 0, 0, 0.85);
+    width: 350rpx;
+    max-height: 60vh;
+    background: rgba(0, 0, 0, 0.9);
     border-radius: 16rpx;
     padding: 20rpx;
     backdrop-filter: blur(10rpx);
     border: 1rpx solid rgba(255, 255, 255, 0.1);
     animation: slideIn 0.3s ease;
+    overflow: hidden;
 
     @keyframes slideIn {
       from {
@@ -195,13 +221,13 @@ const toggleController = () => {
 
       .controller-title {
         color: #FFFFFF;
-        font-size: 24rpx;
+        font-size: 28rpx;
         font-weight: bold;
       }
 
-      .minimize-btn {
-        width: 32rpx;
-        height: 32rpx;
+      .close-btn {
+        width: 36rpx;
+        height: 36rpx;
         background: rgba(255, 255, 255, 0.2);
         border-radius: 50%;
         display: flex;
@@ -221,19 +247,32 @@ const toggleController = () => {
     }
 
     .current-location {
-      margin-bottom: 20rpx;
+      margin-bottom: 15rpx;
+      padding-bottom: 15rpx;
+      border-bottom: 1rpx solid rgba(255, 255, 255, 0.1);
 
       .location-label {
         color: #AAAAAA;
-        font-size: 20rpx;
+        font-size: 22rpx;
         display: block;
         margin-bottom: 5rpx;
       }
 
       .location-coords {
         color: #FFFFFF;
-        font-size: 18rpx;
+        font-size: 20rpx;
         font-family: monospace;
+        display: block;
+      }
+    }
+
+    .city-info {
+      margin-bottom: 20rpx;
+
+      .city-name {
+        color: #00897B;
+        font-size: 24rpx;
+        font-weight: 500;
         display: block;
       }
     }
@@ -245,7 +284,7 @@ const toggleController = () => {
       margin-bottom: 20rpx;
 
       .direction-btn {
-        width: 80rpx;
+        width: 90rpx;
         height: 60rpx;
         background: rgba(255, 255, 255, 0.1);
         border: 1rpx solid rgba(255, 255, 255, 0.2);
@@ -275,38 +314,95 @@ const toggleController = () => {
       }
     }
 
-    .preset-locations {
-      display: flex;
-      flex-direction: column;
-      gap: 8rpx;
+    .poi-section {
+      flex: 1;
+      overflow: hidden;
 
-      .preset-btn {
-        background: rgba(255, 255, 255, 0.1);
-        border: 1rpx solid rgba(255, 255, 255, 0.2);
-        border-radius: 8rpx;
-        padding: 12rpx 16rpx;
-        display: flex;
-        align-items: center;
-        cursor: pointer;
-        transition: all 0.2s ease;
+      .section-title {
+        color: #FFFFFF;
+        font-size: 24rpx;
+        font-weight: bold;
+        margin-bottom: 10rpx;
+        display: block;
+      }
 
-        &:active {
-          background: rgba(255, 255, 255, 0.2);
-          transform: translateX(5rpx);
+      .poi-list {
+        max-height: 200rpx;
+        overflow-y: auto;
+
+        .poi-btn {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1rpx solid rgba(255, 255, 255, 0.2);
+          border-radius: 8rpx;
+          padding: 15rpx;
+          margin-bottom: 8rpx;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:active {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(5rpx);
+          }
+
+          .poi-info {
+            flex: 1;
+
+            .poi-name {
+              color: #FFFFFF;
+              font-size: 24rpx;
+              font-weight: 500;
+              display: block;
+              margin-bottom: 4rpx;
+            }
+
+            .poi-desc {
+              color: #CCCCCC;
+              font-size: 20rpx;
+              display: block;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+          }
+
+          .poi-arrow {
+            color: #00897B;
+            font-size: 24rpx;
+            font-weight: bold;
+            margin-left: 15rpx;
+          }
         }
 
-        .preset-icon {
-          font-size: 20rpx;
-          margin-right: 12rpx;
-          color: #FFFFFF;
-        }
+        .no-pois-tip {
+          text-align: center;
+          padding: 30rpx 20rpx;
 
-        .preset-name {
-          color: #FFFFFF;
-          font-size: 20rpx;
+          .tip-text {
+            color: #CCCCCC;
+            font-size: 22rpx;
+            display: block;
+          }
         }
       }
     }
   }
+}
+
+/* 滚动条样式 */
+.poi-list::-webkit-scrollbar {
+  width: 6rpx;
+}
+
+.poi-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3rpx;
+}
+
+.poi-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 137, 123, 0.6);
+  border-radius: 3rpx;
 }
 </style>
