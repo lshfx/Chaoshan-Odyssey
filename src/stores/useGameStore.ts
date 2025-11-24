@@ -47,6 +47,12 @@ export const useGameStore = defineStore('game', () => {
     name: string
   } | null>(null)
 
+  // 剧情状态
+  const storyStage = ref(0) // 当前剧情阶段，默认为0
+  const unlockedPoiIds = ref<string[]>([]) // 当前已解锁的地点ID列表
+  const currentScript = ref<any[]>([]) // 当前正在播放的对话脚本
+  const isDialogueVisible = ref(false) // 控制对话组件显示
+
   // ============ Getters ============
 
   // 获取当前城市数据
@@ -57,6 +63,31 @@ export const useGameStore = defineStore('game', () => {
   // 获取当前城市的POI列表
   const currentCityPOIs = computed(() => {
     return currentCityData.value?.pois || []
+  })
+
+  // 获取可见的地图标记（基于剧情解锁的POI）
+  const visibleMarkers = computed(() => {
+    const allPois = currentCityData.value?.pois || []
+    return allPois
+      .filter(poi => unlockedPoiIds.value.includes(poi.id))
+      .map(poi => ({
+        id: poi.id,
+        latitude: poi.latitude,
+        longitude: poi.longitude,
+        iconPath: poi.icon || '/static/default-poi-icon.png',
+        width: 32,
+        height: 32,
+        anchor: { x: 0.5, y: 0.5 },
+        callout: {
+          content: poi.name,
+          color: '#333333',
+          fontSize: 12,
+          borderRadius: 4,
+          bgColor: '#ffffff',
+          padding: 8,
+          display: 'ALWAYS'
+        }
+      }))
   })
 
   // 获取当前城市的角色列表
@@ -406,6 +437,84 @@ export const useGameStore = defineStore('game', () => {
     console.log('目标位置设置:', { latitude, longitude, name })
   }
 
+  // 开始剧情
+  const startStory = (characterId: string) => {
+    storyStage.value = 1
+    isDialogueVisible.value = true
+
+    // 根据角色ID生成开场旁白脚本
+    if (characterId === 'chen_linger') {
+      // 陈灵儿开场旁白
+      currentScript.value = [
+        {
+          id: 'intro_1',
+          speakerType: 'narrator',
+          name: '旁白',
+          content: '百年前，揭阳侨商家族为守护文脉与资产，铸五枚印章为信物……'
+        },
+        {
+          id: 'intro_2',
+          speakerType: 'player',
+          name: '陈灵儿',
+          avatar: '/static/avatars/chen_linger.png',
+          content: '养母临终前告诉我，只要集齐印章，就能找到父母失踪的真相。'
+        },
+        {
+          id: 'intro_3',
+          speakerType: 'player',
+          name: '陈灵儿',
+          avatar: '/static/avatars/chen_linger.png',
+          content: '也就是在这里……揭阳学宫。那是他们最后出现的地方。'
+        }
+      ]
+    } else {
+      // 其他角色的默认剧情（后续扩展）
+      currentScript.value = [
+        {
+          id: 'default_intro',
+          speakerType: 'narrator',
+          name: '旁白',
+          content: '你来到了揭阳古城，开启了寻找印章的旅程……'
+        }
+      ]
+    }
+
+    console.log('剧情开始，角色:', characterId, '脚本长度:', currentScript.value.length)
+  }
+
+  // 解锁地点
+  const unlockLocation = (poiId: string) => {
+    if (!unlockedPoiIds.value.includes(poiId)) {
+      unlockedPoiIds.value.push(poiId)
+      console.log('解锁地点:', poiId)
+
+      // 自动设置为目标位置
+      const poi = getPOIById(poiId)
+      if (poi) {
+        setTargetLocation(poi.latitude, poi.longitude, poi.name)
+
+        // 显示提示
+        uni.showToast({
+          title: `已解锁：${poi.name}`,
+          icon: 'success'
+        })
+      }
+    }
+  }
+
+  // 处理对话结束
+  const handleDialogueEnd = () => {
+    isDialogueVisible.value = false
+
+    // 如果是开场旁白结束（storyStage=1），解锁第一个地点
+    if (storyStage.value === 1) {
+      storyStage.value = 2
+      unlockLocation('jieyang_confucian_temple') // 解锁揭阳学宫
+    }
+
+    console.log('对话结束，当前剧情阶段:', storyStage.value)
+  }
+
   // 计算与目标的距离（米）
   const getDistanceToTarget = computed(() => {
     if (!targetLocation.value) return 0
@@ -432,11 +541,16 @@ export const useGameStore = defineStore('game', () => {
     missionStatus,
     userLocation,
     targetLocation,
+    storyStage,
+    unlockedPoiIds,
+    currentScript,
+    isDialogueVisible,
 
     // Getters
     currentCityData,
     currentCityPOIs,
     currentCityCharacters,
+    visibleMarkers,
     unlockedPOIs,
     collectedSeals,
     sealProgress,
@@ -463,6 +577,9 @@ export const useGameStore = defineStore('game', () => {
     getClueById,
     getItemById,
     updateUserLocation,
-    setTargetLocation
+    setTargetLocation,
+    startStory,
+    unlockLocation,
+    handleDialogueEnd
   }
 })

@@ -92,6 +92,13 @@
 
     <InventoryModal v-model:visible="showInventoryModal" @close="showInventoryModal = false" />
 
+    <!-- 剧情对话组件 -->
+    <StoryDialogue
+      v-model:visible="gameStore.isDialogueVisible"
+      :script="gameStore.currentScript"
+      @dialogue-end="gameStore.handleDialogueEnd"
+    />
+
     <!-- 开发环境位置控制器 -->
     <LocationController />
   </view>
@@ -104,6 +111,7 @@
   import { gameData } from '../../mock/gameData'
   import CustomNavbar from '@/components/CustomNavbar.vue'
   import InventoryModal from '@/components/InventoryModal.vue'
+  import StoryDialogue from '@/components/StoryDialogue.vue'
   import LocationController from '@/components/LocationController.vue'
 
   const gameStore = useGameStore()
@@ -140,8 +148,8 @@
   })
 
   const mapMarkers = computed(() => {
-    // 获取基础标记（POI标记）
-    const baseMarkers = getMapMarkers()
+    // 获取基于剧情解锁的POI标记
+    const unlockedMarkers = gameStore.visibleMarkers
 
     // 添加玩家位置标记 - 使用本地静态资源路径
     const playerMarker = {
@@ -156,11 +164,12 @@
     }
 
     // 添加调试日志
+    console.log('Unlocked Markers:', unlockedMarkers)
     console.log('Player Marker:', playerMarker)
     console.log('User Location:', gameStore.userLocation)
 
     // 合并标记数组，玩家位置标记放在最后以确保显示在最上层
-    return [...baseMarkers, playerMarker]
+    return [...unlockedMarkers, playerMarker]
   })
 
   const mapPolylines = computed(() => {
@@ -220,8 +229,9 @@
     const characters = directCharacters.value || []
     if (!characters || characters.length === 0) return
     const char = characters[getSafeSelectedIndex()]
-    if (char && char.name) {
-      gameStore.initGame(char)
+    if (char && char.id) {
+      // 开始剧情流程
+      gameStore.startStory(char.id)
       uni.showToast({ title: `选择了: ${char.name}`, icon: 'success' })
     }
   }
