@@ -48,7 +48,6 @@
         <text class="preset-name">{{ location.name }}</text>
       </view>
     </view>
-    </view>
   </view>
 </template>
 
@@ -220,9 +219,8 @@ const toggleController = () => {
         }
       }
     }
-  }
 
-      .current-location {
+    .current-location {
       margin-bottom: 20rpx;
 
       .location-label {

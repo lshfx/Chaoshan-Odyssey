@@ -2,8 +2,19 @@
   <view class="home-page">
     <CustomNavbar ref="navbarRef" title="潮起东方" bgColor="#00897B" textColor="#FFFFFF" :showBack="false" />
 
-    <map id="gameMap" class="game-map" :latitude="mapCenter.latitude" :longitude="mapCenter.longitude"
-      :markers="mapMarkers" :polyline="mapPolylines" :scale="16" @markertap="onMarkerTap" @tap="onMapTap" />
+    <map id="gameMap" class="game-map"
+      :latitude="mapCenter.latitude"
+      :longitude="mapCenter.longitude"
+      :markers="mapMarkers"
+      :polyline="mapPolylines"
+      :scale="16"
+      :enable-3D="false"
+      :show-compass="false"
+      :enable-overlooking="false"
+      :enable-zoom="true"
+      :enable-scroll="true"
+      @markertap="onMarkerTap"
+      @tap="onMapTap" />
 
     <view class="map-controls">
       <view class="map-btn compass-btn" @tap="goToCompass">
@@ -82,7 +93,7 @@
     <InventoryModal v-model:visible="showInventoryModal" @close="showInventoryModal = false" />
 
     <!-- 开发环境位置控制器 -->
-    <LocationController v-if="process.env.NODE_ENV === 'development'" />
+    <LocationController />
   </view>
 </template>
 
