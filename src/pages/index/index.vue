@@ -143,17 +143,21 @@
     // 获取基础标记（POI标记）
     const baseMarkers = getMapMarkers()
 
-    // 添加玩家位置标记 - 使用更清晰的蓝色圆形图标
+    // 添加玩家位置标记 - 使用本地静态资源路径
     const playerMarker = {
       id: 999, // 数字ID，确保在所有其他标记之上
       latitude: gameStore.userLocation.latitude,
       longitude: gameStore.userLocation.longitude,
-      iconPath: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMCIgcj0iOSIgZmlsbD0iIzAwODlCOiIgZmlsbC1vcGFjaXR5PSIwLjkiLz4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMCIgcj0iNSIgZmlsbD0id2hpdGUiLz4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMCIgcj0iMiIgZmlsbD0iIzAwODlCOiIvPgo8L3N2Zz4=',
-      width: 24,
-      height: 24,
+      iconPath: '/static/my-location.png', // 修复：使用本地静态资源路径
+      width: 40, // 增大尺寸以确保可见性
+      height: 40,
       anchor: { x: 0.5, y: 0.5 },
       zIndex: 999 // 确保在所有标记之上
     }
+
+    // 添加调试日志
+    console.log('Player Marker:', playerMarker)
+    console.log('User Location:', gameStore.userLocation)
 
     // 合并标记数组，玩家位置标记放在最后以确保显示在最上层
     return [...baseMarkers, playerMarker]
