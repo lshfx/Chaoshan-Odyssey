@@ -1,8 +1,16 @@
 <template>
-  <view class="location-controller">
+  <!-- 收折状态：悬浮按钮 -->
+  <view v-if="isCollapsed" class="location-controller collapsed">
+    <view class="floating-btn" @tap="toggleController">
+      <text class="floating-icon">🕹️</text>
+    </view>
+  </view>
+
+  <!-- 展开状态：完整控制面板 -->
+  <view v-else class="location-controller expanded">
     <view class="controller-header">
       <text class="controller-title">位置控制器</text>
-      <view class="close-btn" @tap="toggleController">×</view>
+      <view class="minimize-btn" @tap="toggleController">−</view>
     </view>
 
     <!-- 当前位置显示 -->
@@ -40,6 +48,7 @@
         <text class="preset-name">{{ location.name }}</text>
       </view>
     </view>
+    </view>
   </view>
 </template>
 
@@ -49,6 +58,7 @@ import { useGameStore } from '@/stores/useGameStore'
 
 const gameStore = useGameStore()
 const userLocation = ref(gameStore.userLocation)
+const isCollapsed = ref(true) // 默认收折状态
 
 // 预设位置
 const presetLocations = [
@@ -114,137 +124,189 @@ const moveToPreset = (location: any) => {
 
 // 显示/隐藏控制器
 const toggleController = () => {
-  // 这里可以添加隐藏逻辑
+  isCollapsed.value = !isCollapsed.value
 }
 </script>
 
 <style lang="scss" scoped>
 .location-controller {
-  position: fixed;
-  left: 30rpx;
-  bottom: 200rpx; // 为tabbar留出空间
-  width: 320rpx;
-  background: rgba(0, 0, 0, 0.85);
-  border-radius: 16rpx;
-  padding: 20rpx;
-  backdrop-filter: blur(10rpx);
   z-index: 100;
-  border: 1rpx solid rgba(255, 255, 255, 0.1);
 
-  .controller-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15rpx;
+  // 收折状态：悬浮按钮
+  &.collapsed {
+    position: fixed;
+    left: 20px;
+    bottom: 100px;
 
-    .controller-title {
-      color: #FFFFFF;
-      font-size: 24rpx;
-      font-weight: bold;
-    }
-
-    .close-btn {
-      width: 32rpx;
-      height: 32rpx;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #FFFFFF;
-      font-size: 20rpx;
-      cursor: pointer;
-
-      &:active {
-        background: rgba(255, 255, 255, 0.3);
-      }
-    }
-  }
-
-  .current-location {
-    margin-bottom: 20rpx;
-
-    .location-label {
-      color: #AAAAAA;
-      font-size: 20rpx;
-      display: block;
-      margin-bottom: 5rpx;
-    }
-
-    .location-coords {
-      color: #FFFFFF;
-      font-size: 18rpx;
-      font-family: monospace;
-      display: block;
-    }
-  }
-
-  .direction-controls {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8rpx;
-    margin-bottom: 20rpx;
-
-    .direction-btn {
+    .floating-btn {
       width: 80rpx;
-      height: 60rpx;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1rpx solid rgba(255, 255, 255, 0.2);
-      border-radius: 8rpx;
+      height: 80rpx;
+      background: rgba(0, 0, 0, 0.85);
+      border-radius: 50%;
+      backdrop-filter: blur(10rpx);
+      border: 1rpx solid rgba(255, 255, 255, 0.1);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #FFFFFF;
-      font-size: 24rpx;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
+      box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.3);
 
       &:active {
-        background: rgba(255, 255, 255, 0.2);
-        transform: scale(0.95);
+        transform: scale(0.9);
+        background: rgba(0, 0, 0, 0.95);
       }
 
-      &.center-btn {
-        background: rgba(0, 137, 123, 0.6);
-        border-color: #00897B;
-        font-size: 20rpx;
+      .floating-icon {
+        font-size: 32rpx;
+        color: #FFFFFF;
+      }
+    }
+  }
+
+  // 展开状态：完整控制面板
+  &.expanded {
+    position: fixed;
+    left: 30rpx;
+    bottom: 200rpx; // 为tabbar留出空间
+    width: 320rpx;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 16rpx;
+    padding: 20rpx;
+    backdrop-filter: blur(10rpx);
+    border: 1rpx solid rgba(255, 255, 255, 0.1);
+    animation: slideIn 0.3s ease;
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20rpx);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .controller-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15rpx;
+
+      .controller-title {
+        color: #FFFFFF;
+        font-size: 24rpx;
+        font-weight: bold;
+      }
+
+      .minimize-btn {
+        width: 32rpx;
+        height: 32rpx;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #FFFFFF;
+        font-size: 24rpx;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
 
         &:active {
-          background: rgba(0, 137, 123, 0.8);
+          background: rgba(255, 255, 255, 0.3);
+          transform: scale(0.9);
         }
       }
     }
   }
 
-  .preset-locations {
-    display: flex;
-    flex-direction: column;
-    gap: 8rpx;
+      .current-location {
+      margin-bottom: 20rpx;
 
-    .preset-btn {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1rpx solid rgba(255, 255, 255, 0.2);
-      border-radius: 8rpx;
-      padding: 12rpx 16rpx;
+      .location-label {
+        color: #AAAAAA;
+        font-size: 20rpx;
+        display: block;
+        margin-bottom: 5rpx;
+      }
+
+      .location-coords {
+        color: #FFFFFF;
+        font-size: 18rpx;
+        font-family: monospace;
+        display: block;
+      }
+    }
+
+    .direction-controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8rpx;
+      margin-bottom: 20rpx;
+
+      .direction-btn {
+        width: 80rpx;
+        height: 60rpx;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1rpx solid rgba(255, 255, 255, 0.2);
+        border-radius: 8rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #FFFFFF;
+        font-size: 24rpx;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:active {
+          background: rgba(255, 255, 255, 0.2);
+          transform: scale(0.95);
+        }
+
+        &.center-btn {
+          background: rgba(0, 137, 123, 0.6);
+          border-color: #00897B;
+          font-size: 20rpx;
+
+          &:active {
+            background: rgba(0, 137, 123, 0.8);
+          }
+        }
+      }
+    }
+
+    .preset-locations {
       display: flex;
-      align-items: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
+      flex-direction: column;
+      gap: 8rpx;
 
-      &:active {
-        background: rgba(255, 255, 255, 0.2);
-        transform: translateX(5rpx);
-      }
+      .preset-btn {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1rpx solid rgba(255, 255, 255, 0.2);
+        border-radius: 8rpx;
+        padding: 12rpx 16rpx;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
 
-      .preset-icon {
-        font-size: 20rpx;
-        margin-right: 12rpx;
-        color: #FFFFFF;
-      }
+        &:active {
+          background: rgba(255, 255, 255, 0.2);
+          transform: translateX(5rpx);
+        }
 
-      .preset-name {
-        color: #FFFFFF;
-        font-size: 20rpx;
+        .preset-icon {
+          font-size: 20rpx;
+          margin-right: 12rpx;
+          color: #FFFFFF;
+        }
+
+        .preset-name {
+          color: #FFFFFF;
+          font-size: 20rpx;
+        }
       }
     }
   }

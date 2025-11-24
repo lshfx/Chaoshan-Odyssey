@@ -47,7 +47,7 @@
     <view v-if="!missionStatus.gameStarted" class="character-select-modal">
       <view class="character-carousel">
         <swiper :indicator-dots="true" :autoplay="false" @change="onCharacterChange">
-          <swiper-item v-for="character in directCharacters" :key="character?.id || $index">
+          <swiper-item v-for="(character, index) in directCharacters" :key="character?.id || index">
             <view class="carousel-item-wrapper">
               <view class="card-container">
                 
@@ -81,7 +81,8 @@
 
     <InventoryModal v-model:visible="showInventoryModal" @close="showInventoryModal = false" />
 
-    <LocationController />
+    <!-- 开发环境位置控制器 -->
+    <LocationController v-if="process.env.NODE_ENV === 'development'" />
   </view>
 </template>
 
@@ -119,7 +120,7 @@
   })
 
   const directCharacters = computed(() => {
-    const city = currentCity.value || 'jieyang'
+    const city = gameStore.currentCity || 'jieyang'
     return gameData[city as keyof typeof gameData]?.characters || gameData.jieyang.characters || []
   })
 
@@ -127,7 +128,24 @@
     return gameStore.userLocation || { latitude: 23.5360, longitude: 116.3560 }
   })
 
-  const mapMarkers = computed(() => getMapMarkers())
+  const mapMarkers = computed(() => {
+    // 获取基础标记（POI标记）
+    const baseMarkers = getMapMarkers()
+
+    // 添加玩家位置标记
+    const playerMarker = {
+      id: 'player-marker',
+      latitude: gameStore.userLocation.latitude,
+      longitude: gameStore.userLocation.longitude,
+      iconPath: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iOCIgZmlsbD0iIzAwODk3QiIgZmlsbC1vcGFjaXR5PSIwLjgiLz4KPGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iNCIgZmlsbD0id2hpdGUiLz4KPGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iMiIgZmlsbD0iIzAwODk3QiIvPgo8L3N2Zz4=',
+      width: 20,
+      height: 20,
+      anchor: { x: 0.5, y: 0.5 }
+    }
+
+    // 合并标记数组，玩家位置标记放在最后以确保显示在最上层
+    return [...baseMarkers, playerMarker]
+  })
 
   const mapPolylines = computed(() => {
     if (!gameStore.userLocation || !gameStore.targetLocation) return []
@@ -193,7 +211,7 @@
   }
 
   watch(() => gameStore.getDistanceToTarget, (newDistance, oldDistance) => {
-    if (newDistance < 50 && oldDistance >= 50) checkArrival()
+    if (newDistance < 50 && (oldDistance === undefined || oldDistance >= 50)) checkArrival()
   }, { immediate: true })
 </script>
 
