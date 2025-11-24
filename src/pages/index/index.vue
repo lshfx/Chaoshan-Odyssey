@@ -228,11 +228,18 @@
   const startGame = () => {
     const characters = directCharacters.value || []
     if (!characters || characters.length === 0) return
+
     const char = characters[getSafeSelectedIndex()]
-    if (char && char.id) {
-      // 开始剧情流程
-      gameStore.startStory(char.id)
-      uni.showToast({ title: `选择了: ${char.name}`, icon: 'success' })
+
+    if (char && char.name) {
+      // 1. 先关闭模态框，进入游戏状态
+      gameStore.initGame(char)
+      uni.showToast({ title: `进入: ${char.name}`, icon: 'none' })
+
+      // 2. 延迟启动剧情，让地图先露出来
+      setTimeout(() => {
+        gameStore.startStory(char.id)
+      }, 800)
     }
   }
 
