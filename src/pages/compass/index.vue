@@ -72,7 +72,7 @@
       <!-- 迷你罗盘 -->
       <view class="mini-compass-container">
         <!-- 刻度盘容器 -->
-        <view class="mini-dial" :style="{ transform: `rotate(${-deviceHeading}deg)` }">
+        <view class="mini-dial" :style="{ transform: `translate(-50%, -50%) rotate(${-deviceHeading}deg)` }">
           <view class="dial-ring"></view>
           <view class="dial-directions">
             <text class="dial-label dial-n">N</text>
@@ -83,7 +83,7 @@
         </view>
 
         <!-- 指针容器 (兄弟节点，避免嵌套旋转叠加) -->
-        <view class="mini-pointer" :style="{ transform: `rotate(${pointerAngle}deg)` }">
+        <view class="mini-pointer" :style="{ transform: `translate(-50%, -50%) rotate(${pointerAngle}deg)` }">
           <view class="pointer-arrow"></view>
           <view class="pointer-center"></view>
         </view>
@@ -583,11 +583,13 @@ const throttledUpdateUI = () => {
 const updatePointer = () => {
   if (hasTarget.value) {
     const bearing = calculateBearing()
-    // 指针现在是兄弟节点且默认指向上方(0度=北方)
-    // 直接使用绝对方位角即可
-    pointerAngle.value = bearing
+
+    // 在兄弟节点架构下，指针相对于屏幕的旋转角度 = 目标方位角 - 设备朝向
+    // 这样可以确保指针指向相对于用户视角的正确方向
+    const relativeAngle = ((bearing - deviceHeading.value) + 360) % 360
+    pointerAngle.value = relativeAngle
   } else {
-    // 无目标时指针归零（指向北方）
+    // 无目标时指针归零（指向用户正前方）
     pointerAngle.value = 0
   }
 }
