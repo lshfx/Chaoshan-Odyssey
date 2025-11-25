@@ -1279,12 +1279,15 @@ onUnmounted(() => {
   padding: 0;
   padding-bottom: env(safe-area-inset-bottom);
   animation: slideUp 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
 
   .selector-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 30px;
+    box-sizing: border-box;
 
     .selector-title {
       color: #FFD700;
@@ -1307,17 +1310,19 @@ onUnmounted(() => {
   }
 
   .poi-list {
+    width: 100%;
     max-height: 60vh;
-    padding: 20px;
+    padding: 0 30rpx; // 给左右留出空隙，不要贴边
     overflow-y: auto;
+    box-sizing: border-box;
 
     .poi-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 20px;
+      padding: 24rpx 32rpx; // 增加卡片内部呼吸感
       border-radius: 16px;
-      margin-bottom: 10px;
+      margin-bottom: 16rpx;
       background: rgba(0, 0, 0, 0.3);
       border: 1px solid rgba(212, 175, 55, 0.2);
       width: 100%;
@@ -1330,8 +1335,8 @@ onUnmounted(() => {
 
       .poi-info {
         flex: 1;
-        min-width: 0; // 允许内容收缩
-        margin-right: 12px;
+        min-width: 0; // 关键：防止文本溢出撑开容器
+        margin-right: 20rpx;
 
         .poi-name {
           color: #FFD700;
@@ -1353,9 +1358,11 @@ onUnmounted(() => {
       }
 
       .poi-icon {
-        font-size: 32rpx;
-        flex-shrink: 0; // 防止图标被压缩
-        margin-left: 8px;
+        flex-shrink: 0; // 关键：图标永不缩小
+        font-size: 36rpx;
+        width: 40rpx;
+        text-align: center;
+        margin-left: 20rpx; // 跟文字保持距离
       }
     }
   }
