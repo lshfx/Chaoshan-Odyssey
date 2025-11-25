@@ -50,75 +50,21 @@
     </map>
 
     <!-- 顶部导航HUD卡片 -->
-    <view class="top-hud-card">
-      <view class="hud-header">
-        <view class="nav-icon">
-          <text class="nav-symbol">{{ getNavigationSymbol() }}</text>
-        </view>
-        <view class="nav-info">
-          <text class="nav-instruction">{{ currentNavigationInstruction }}</text>
-          <text class="target-name">{{ targetName || '请设置导航目标' }}</text>
-        </view>
-        <view class="nav-actions">
-          <view class="action-btn" @tap="showTargetSelector">
-            <text class="action-icon">🎯</text>
-          </view>
-        </view>
-      </view>
-    </view>
+    <NavHud
+      :symbol="navigationSymbol"
+      :instruction="navigationInstruction"
+      :target-name="targetName"
+      @tap-selector="showTargetSelector"
+    />
 
     <!-- 底部仪表盘 -->
-    <view class="bottom-dashboard">
-      <!-- 迷你罗盘 -->
-      <view class="mini-compass-container">
-        <!-- 刻度盘容器 (固定底盘) -->
-        <view class="mini-dial">
-          <view class="dial-ring"></view>
-
-          <!-- 装饰性刻度线 -->
-          <view class="dial-ticks">
-            <!-- 主方向刻度线（粗） -->
-            <view class="tick tick-major tick-top"></view>
-            <view class="tick tick-major tick-right"></view>
-            <view class="tick tick-major tick-bottom"></view>
-            <view class="tick tick-major tick-left"></view>
-
-            <!-- 次要刻度线（细） -->
-            <view class="tick tick-minor tick-top-right"></view>
-            <view class="tick tick-minor tick-bottom-right"></view>
-            <view class="tick tick-minor tick-bottom-left"></view>
-            <view class="tick tick-minor tick-top-left"></view>
-          </view>
-        </view>
-
-        <!-- 指针容器 (兄弟节点，避免嵌套旋转叠加) -->
-        <view
-          class="mini-pointer"
-          :style="{ transform: `translate(-50%, -50%) rotate(${pointerAngle}deg)` }"
-        >
-          <view class="pointer-arrow"></view>
-          <view class="pointer-center"></view>
-        </view>
-
-        <text class="mini-compass-label">方位</text>
-      </view>
-
-      <!-- 数据面板 -->
-      <view class="data-panel">
-        <view class="data-item">
-          <text class="data-label">距离</text>
-          <text class="data-value">{{ formatDistance }}</text>
-        </view>
-        <view class="data-item">
-          <text class="data-label">预计</text>
-          <text class="data-value">{{ formatDuration }}</text>
-        </view>
-        <view class="data-item">
-          <text class="data-label">时速</text>
-          <text class="data-value">{{ currentSpeed }}</text>
-        </view>
-      </view>
-    </view>
+    <CompassDashboard
+      :device-heading="deviceHeading"
+      :pointer-angle="pointerAngle"
+      :distance="formatDistance"
+      :duration="formatDuration"
+      :speed="currentSpeed"
+    />
 
     <!-- 加载状态指示器 -->
     <view v-if="isLoadingRoute" class="loading-overlay">
@@ -129,30 +75,12 @@
     </view>
 
     <!-- 目标选择器 -->
-    <view v-if="showTargetModal" class="target-selector-overlay" @tap="hideTargetSelector">
-      <view class="target-selector" @tap.stop>
-        <view class="selector-header">
-          <text class="selector-title">选择导航目标</text>
-          <view class="close-btn" @tap="hideTargetSelector">×</view>
-        </view>
-
-        <scroll-view class="poi-list" scroll-y="true">
-          <view
-            v-for="poi in availablePOIs"
-            :key="poi.id"
-            class="poi-item"
-            :class="{ 'selected': isSelectedPOI(poi.id) }"
-            @tap="selectTarget(poi)"
-          >
-            <view class="poi-info">
-              <text class="poi-name">{{ poi.name }}</text>
-              <text class="poi-distance">{{ calculateDistance(poi) }}米</text>
-            </view>
-            <view class="poi-icon">{{ (poi as any).icon || '📍' }}</view>
-          </view>
-        </scroll-view>
-      </view>
-    </view>
+    <TargetSelector
+      v-model:visible="showTargetModal"
+      :pois="availablePOIs"
+      :current-id="currentTargetId"
+      @select="handleSelectTarget"
+    />
 
     <!-- 到达提示 -->
     <view v-if="showArrivalModal" class="arrival-overlay">
@@ -169,12 +97,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useGameStore } from '@/stores/useGameStore'
+import { gameData } from '@/mock/gameData'
 import CustomNavbar from '@/components/CustomNavbar.vue'
-
-// 腾讯地图配置
-const TENCENT_MAP_KEY = '5GWBZ-NZUCU-XEYVJ-GP2TW-IZRW5-6AFC7'
+import NavHud from '@/components/compass/NavHud.vue'
+import CompassDashboard from '@/components/compass/CompassDashboard.vue'
+import TargetSelector from '@/components/compass/TargetSelector.vue'
+import { useMapNavigation } from '@/composables/useMapNavigation'
 
 const gameStore = useGameStore()
+const navigation = useMapNavigation()
 
 // 地图状态
 const mapScale = ref(16)
@@ -187,29 +118,20 @@ const pointerAngle = ref(0)
 const compassTimer = ref<any>(null)
 
 // 罗盘数据平滑处理
-const rawHeading = ref(0) // 原始磁力计数据
-const smoothHeading = ref(0) // 平滑后的显示数据
-const lastUpdateTime = ref(0) // 节流控制
-const compassUpdateInterval = 100 // 节流间隔：100ms
-
-// 导航数据
-const routeData = ref<any>(null)
-const routePolyline = ref<any[]>([])
-const userTrackPolyline = ref<any[]>([])
-const currentNavigationInstruction = ref('')
-const routeDistance = ref(0)
-const routeDuration = ref(0)
-const currentSpeed = ref('0 km/h')
-const isLoadingRoute = ref(false)
-
-// 轨迹记录 (简化版)
-const trackTimer = ref<any>(null)
+const rawHeading = ref(0)
+const smoothHeading = ref(0)
+const lastUpdateTime = ref(0)
+const compassUpdateInterval = 100
 
 // UI状态
 const showTargetModal = ref(false)
 const showArrivalModal = ref(false)
+const currentSpeed = ref('0 km/h')
 
-// 地图中心点
+// 轨迹记录
+const trackTimer = ref<any>(null)
+
+// 计算属性
 const mapCenter = computed(() => {
   if (isFollowingUser.value && gameStore.userLocation) {
     return {
@@ -222,10 +144,9 @@ const mapCenter = computed(() => {
     return gameStore.userLocation
   }
 
-  return { latitude: 23.5360, longitude: 116.3560 } // 揭阳市中心
+  return { latitude: 23.5360, longitude: 116.3560 }
 })
 
-// 地图标记
 const mapMarkers = computed(() => {
   const markers = []
 
@@ -268,14 +189,13 @@ const mapMarkers = computed(() => {
   return markers
 })
 
-// 地图路线 (规划路线 + 用户轨迹)
 const mapPolylines = computed(() => {
   const polylines = []
 
   // 规划的导航路线 (青色)
-  if (routePolyline.value.length > 0) {
+  if (navigation.routePolyline.value.length > 0) {
     polylines.push({
-      points: routePolyline.value,
+      points: navigation.routePolyline.value,
       color: '#00897B',
       width: 8,
       dottedLine: false,
@@ -286,9 +206,9 @@ const mapPolylines = computed(() => {
   }
 
   // 用户实际轨迹 (金色虚线)
-  if (userTrackPolyline.value.length > 1) {
+  if (navigation.userTrackPolyline.value.length > 1) {
     polylines.push({
-      points: userTrackPolyline.value,
+      points: navigation.userTrackPolyline.value,
       color: '#FFD700',
       width: 4,
       dottedLine: true,
@@ -301,7 +221,6 @@ const mapPolylines = computed(() => {
   return polylines
 })
 
-// 地图圆形区域 (可选的精度圆圈)
 const mapCircles = computed(() => {
   const circles = []
 
@@ -320,42 +239,12 @@ const mapCircles = computed(() => {
   return circles
 })
 
-// 计算属性
-const hasTarget = computed(() => !!gameStore.targetLocation)
 const targetName = computed(() => gameStore.targetLocation?.name || '')
-const distanceToTarget = computed(() => gameStore.getDistanceToTarget)
+const currentTargetId = computed(() => (gameStore.targetLocation as any)?.id)
 
-const formatDistance = computed(() => {
-  if (!hasTarget.value) return '--'
-  if (routeDistance.value > 0) {
-    return `${Math.round(routeDistance.value)}m`
-  }
-  return `${distanceToTarget.value}m`
-})
-
-const formatDuration = computed(() => {
-  if (!hasTarget.value) return '--'
-
-  // API 返回单位为分钟，直接使用
-  const minutes = routeDuration.value
-
-  if (minutes > 0) {
-    if (minutes >= 60) {
-      const hours = Math.floor(minutes / 60)
-      const mins = Math.round(minutes % 60)
-      return `${hours}小时${mins}分钟`
-    }
-    if (minutes < 1) {
-      return '< 1分钟'
-    }
-    return `${Math.round(minutes)}分钟`
-  }
-
-  // 如果 API 尚未返回结果
-  if (isLoadingRoute.value) return '计算中...'
-
-  return '--'
-})
+// 导航相关计算属性
+const navigationSymbol = computed(() => navigation.getNavigationSymbol(deviceHeading.value))
+const navigationInstruction = computed(() => navigation.currentNavigationInstruction.value)
 
 // 可用的POI列表
 const availablePOIs = computed(() => {
@@ -368,169 +257,36 @@ const availablePOIs = computed(() => {
         name: '揭阳学宫',
         latitude: 23.5436,
         longitude: 116.3683,
-      } as any,
+      },
       {
         id: 'test_jinxian',
         name: '进贤门',
         latitude: 23.5360,
         longitude: 116.3560,
         icon: '🚪'
-      } as any,
+      },
       {
         id: 'test_lion',
         name: '青狮文化区',
         latitude: 23.5338,
         longitude: 116.3715,
         icon: '🦁'
-      } as any,
+      },
       {
         id: 'test_tea',
         name: '功夫茶馆',
         latitude: 23.5316,
         longitude: 116.3642,
         icon: '🍵'
-      } as any
+      }
     ]
   }
 
   return gamePOIs
 })
 
-// 坐标解压算法 (前向差分)
-const unzipPolyline = (coors: number[]) => {
-  let result: any[] = []
-
-  if (coors.length < 2) return result
-
-  let prevLat = coors[0]
-  let prevLng = coors[1]
-  result.push({ latitude: prevLat, longitude: prevLng })
-
-  for (let i = 2; i < coors.length; i += 2) {
-    let dLat = coors[i]
-    let dLng = coors[i + 1]
-    prevLat = prevLat + dLat / 1000000
-    prevLng = prevLng + dLng / 1000000
-    result.push({ latitude: prevLat, longitude: prevLng })
-  }
-  return result
-}
-
-// 腾讯地图步行路线规划API
-const fetchWalkingRoute = async (fromLat: number, fromLng: number, toLat: number, toLng: number) => {
-  if (TENCENT_MAP_KEY === 'YOUR_KEY_HERE') {
-    console.warn('腾讯地图API密钥未配置，使用模拟导航')
-    return null
-  }
-
-  try {
-    const url = `https://apis.map.qq.com/ws/direction/v1/walking/`
-    const params = {
-      from: `${fromLat},${fromLng}`,
-      to: `${toLat},${toLng}`,
-      key: TENCENT_MAP_KEY,
-      output: 'json'
-    }
-
-    const queryString = Object.entries(params)
-      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
-      .join('&')
-
-    const response = await uni.request({
-      url: `${url}?${queryString}`,
-      method: 'GET'
-    })
-
-    if (response.statusCode === 200 && typeof response.data === 'object' && response.data.status === 0) {
-      return response.data.result
-    } else {
-      console.error('腾讯地图API调用失败:', response.data)
-      return null
-    }
-  } catch (error) {
-    console.error('获取路线失败:', error)
-    return null
-  }
-}
-
-// 解析导航指令
-const parseNavigationInstructions = (route: any) => {
-  if (!route || !route.routes || route.routes.length === 0) {
-    return '请沿当前道路继续前行'
-  }
-
-  const currentRoute = route.routes[0]
-  if (!currentRoute.steps || currentRoute.steps.length === 0) {
-    return '请沿当前道路继续前行'
-  }
-
-  const firstStep = currentRoute.steps[0]
-
-  switch (firstStep.maneuver) {
-    case '直行':
-      return `沿${firstStep.road_name || '道路'}直行 ${firstStep.distance ? Math.round(firstStep.distance) + '米' : ''}`
-    case '左转':
-      return `在前方路口左转进入${firstStep.road_name || '道路'} ${firstStep.distance ? Math.round(firstStep.distance) + '米' : ''}`
-    case '右转':
-      return `在前方路口右转进入${firstStep.road_name || '道路'} ${firstStep.distance ? Math.round(firstStep.distance) + '米' : ''}`
-    case '掉头':
-      return '在前方掉头'
-    case '左转通过':
-      return `左转通过${firstStep.road_name || '路口'}`
-    case '右转通过':
-      return `右转通过${firstStep.road_name || '路口'}`
-    default:
-      return `沿${firstStep.road_name || '当前道路'}步行 ${firstStep.distance ? Math.round(firstStep.distance) + '米' : ''}`
-  }
-}
-
-// 获取导航符号
-const getNavigationSymbol = () => {
-  if (!hasTarget.value) return '🧭'
-
-  const distance = distanceToTarget.value
-  if (distance < 10) return '🎯'
-  if (distance < 50) return '📍'
-  if (distance < 200) return '🚶'
-
-  // HUD显示相对方位：目标在我的哪个方向
-  const bearing = calculateBearing()
-  const relativeAngle = ((bearing - deviceHeading.value) + 360) % 360
-
-  // 0度代表"正前方"
-  if (relativeAngle >= 337.5 || relativeAngle < 22.5) return '⬆️' // 正前方
-  if (relativeAngle >= 22.5 && relativeAngle < 67.5) return '↗️' // 右前方
-  if (relativeAngle >= 67.5 && relativeAngle < 112.5) return '➡️' // 正右方
-  if (relativeAngle >= 112.5 && relativeAngle < 157.5) return '↘️' // 右后方
-  if (relativeAngle >= 157.5 && relativeAngle < 202.5) return '⬇️' // 正后方
-  if (relativeAngle >= 202.5 && relativeAngle < 247.5) return '↙️' // 左后方
-  if (relativeAngle >= 247.5 && relativeAngle < 292.5) return '⬅️' // 正左方
-  return '↖️' // 左前方
-}
-
-// 计算方位角
-const calculateBearing = () => {
-  if (!gameStore.userLocation || !gameStore.targetLocation) return 0
-
-  const lat1 = gameStore.userLocation.latitude * Math.PI / 180
-  const lon1 = gameStore.userLocation.longitude * Math.PI / 180
-  const lat2 = gameStore.targetLocation.latitude * Math.PI / 180
-  const lon2 = gameStore.targetLocation.longitude * Math.PI / 180
-
-  const dLon = lon2 - lon1
-  const y = Math.sin(dLon) * Math.cos(lat2)
-  const x = Math.cos(lat1) * Math.sin(lat2) -
-          Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon)
-
-  let bearing = Math.atan2(y, x) * 180 / Math.PI
-  bearing = (bearing + 360) % 360
-
-  return bearing
-}
-
-// 罗盘数据平滑处理函数
+// 罗盘数据平滑处理
 const smoothCompassData = (targetHeading: number) => {
-  // 解决 0度 <-> 360度 旋转突变问题
   let adjustedTarget = targetHeading
   const currentDisplay = smoothHeading.value
 
@@ -542,32 +298,25 @@ const smoothCompassData = (targetHeading: number) => {
     }
   }
 
-  // 线性插值 (Lerp factor = 0.15)
   const lerpFactor = 0.15
   smoothHeading.value += (adjustedTarget - smoothHeading.value) * lerpFactor
 
-  // 归一化到 0-360 范围
   return (smoothHeading.value + 360) % 360
 }
 
-// 节流更新UI
 const throttledUpdateUI = () => {
   const now = Date.now()
   if (now - lastUpdateTime.value >= compassUpdateInterval) {
     lastUpdateTime.value = now
-
-    // 应用平滑数据到UI显示
     deviceHeading.value = Math.round(smoothHeading.value)
-
-    // 更新指针角度
     updatePointer()
   }
 }
 
 // 更新指针角度 - 雷达模式算法
 const updatePointer = () => {
-  if (hasTarget.value) {
-    const bearing = calculateBearing()
+  if (navigation.hasTarget.value) {
+    const bearing = navigation.calculateBearing()
     // 雷达模式：指针显示目标相对于用户正前方的角度
     // 0° = 正前方，90° = 正右方，180° = 正后方，270° = 正左方
     const relativeAngle = ((bearing - deviceHeading.value) + 360) % 360
@@ -586,11 +335,9 @@ const startCompass = () => {
     return
   }
 
-  // 先停止现有罗盘监听，避免重复启动错误
   uni.stopCompass({
     complete: () => {
       console.log('已停止现有罗盘监听')
-      // 延迟启动，确保完全停止
       setTimeout(() => {
         startCompassListening()
       }, 200)
@@ -598,17 +345,12 @@ const startCompass = () => {
   })
 }
 
-// 实际启动罗盘监听的函数
 const startCompassListening = () => {
   uni.onCompassChange((res) => {
-    // 获取原始磁力计数据
     const newRawHeading = Math.round(res.direction)
     rawHeading.value = newRawHeading
 
-    // 应用平滑处理
     const smoothedValue = smoothCompassData(newRawHeading)
-
-    // 节流更新UI
     throttledUpdateUI()
   })
 
@@ -618,7 +360,6 @@ const startCompassListening = () => {
     },
     fail: (err) => {
       console.error('罗盘启动失败:', err)
-      // 如果已经启动，直接监听
       if (err.errMsg?.includes('has enable')) {
         console.log('罗盘已经启动，开始监听变化')
       } else {
@@ -628,22 +369,17 @@ const startCompassListening = () => {
   })
 }
 
-// 模拟罗盘数据
 const simulateCompass = () => {
   let angle = 0
   compassTimer.value = setInterval(() => {
     angle = (angle + 2) % 360
     rawHeading.value = angle
 
-    // 对模拟数据也应用平滑处理
     const smoothedValue = smoothCompassData(angle)
-
-    // 节流更新UI
     throttledUpdateUI()
-  }, 50) // 模拟器高频数据，用于测试平滑效果
+  }, 50)
 }
 
-// 停止罗盘监听
 const stopCompass = () => {
   if (compassTimer.value) {
     clearInterval(compassTimer.value)
@@ -663,71 +399,22 @@ const stopCompass = () => {
 const startTrackRecording = () => {
   trackTimer.value = setInterval(() => {
     if (gameStore.userLocation) {
-      // 直接将当前坐标 push 到 userTrackPolyline
-      userTrackPolyline.value.push({
+      navigation.userTrackPolyline.value.push({
         latitude: gameStore.userLocation.latitude,
         longitude: gameStore.userLocation.longitude
       })
 
-      // 限制轨迹点数量，避免过多数据
-      if (userTrackPolyline.value.length > 200) {
-        userTrackPolyline.value.shift()
+      if (navigation.userTrackPolyline.value.length > 200) {
+        navigation.userTrackPolyline.value.shift()
       }
-
-      console.log('记录轨迹点:', {
-        lat: gameStore.userLocation.latitude,
-        lng: gameStore.userLocation.longitude,
-        totalPoints: userTrackPolyline.value.length
-      })
     }
-  }, 3000) // 每3秒记录一次，减少频率
+  }, 3000)
 }
 
-// 停止轨迹记录
 const stopTrackRecording = () => {
   if (trackTimer.value) {
     clearInterval(trackTimer.value)
     trackTimer.value = null
-  }
-}
-
-// 加载导航路线
-const loadNavigationRoute = async () => {
-  if (!gameStore.userLocation || !gameStore.targetLocation) {
-    routeData.value = null
-    routePolyline.value = []
-    currentNavigationInstruction.value = ''
-    return
-  }
-
-  isLoadingRoute.value = true
-
-  try {
-    const route = await fetchWalkingRoute(
-      gameStore.userLocation.latitude,
-      gameStore.userLocation.longitude,
-      gameStore.targetLocation.latitude,
-      gameStore.targetLocation.longitude
-    )
-
-    if (route) {
-      routeData.value = route
-      routeDistance.value = route.routes[0]?.distance || 0
-      routeDuration.value = route.routes[0]?.duration || 0
-      currentNavigationInstruction.value = parseNavigationInstructions(route)
-
-      // 解压polyline坐标
-      if (route.routes[0]?.polyline) {
-        routePolyline.value = unzipPolyline(route.routes[0].polyline)
-        console.log('解压后的路径坐标点数:', routePolyline.value.length)
-      }
-    } else {
-      routeData.value = null
-      routePolyline.value = []
-      currentNavigationInstruction.value = '路线规划失败，请检查网络连接'
-    }
-  } finally {
-    isLoadingRoute.value = false
   }
 }
 
@@ -755,7 +442,6 @@ const resetMapView = () => {
 }
 
 const onMapRegionChange = (e: any) => {
-  // 当用户手动拖动地图时，关闭跟随模式
   if (e.type === 'end') {
     isFollowingUser.value = false
   }
@@ -771,78 +457,40 @@ const showTargetSelector = () => {
   showTargetModal.value = true
 }
 
-const hideTargetSelector = () => {
-  showTargetModal.value = false
-}
-
-const calculateDistance = (poi: any) => {
-  if (!gameStore.userLocation) return 0
-
-  const R = 6371000
-  const lat1 = gameStore.userLocation.latitude * Math.PI / 180
-  const lon1 = gameStore.userLocation.longitude * Math.PI / 180
-  const lat2 = poi.latitude * Math.PI / 180
-  const lon2 = poi.longitude * Math.PI / 180
-
-  const deltaLat = lat2 - lat1
-  const deltaLon = lon2 - lon1
-
-  const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-            Math.cos(lat1) * Math.cos(lat2) *
-            Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2)
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return Math.round(R * c)
-}
-
-const isSelectedPOI = (poiId: string) => {
-  return (gameStore.targetLocation as any)?.id === poiId
-}
-
-const selectTarget = async (poi: any) => {
-  // 1. 设置全局目标
+const handleSelectTarget = async (poi: any) => {
+  // 设置全局目标
   gameStore.setTargetLocation(poi.latitude, poi.longitude, poi.name)
 
-  // 2. 关键修复：立即关闭弹窗
-  showTargetModal.value = false
-
-  // 3. 用户反馈
+  // 用户反馈
   uni.showToast({
     title: `目标已锁定：${poi.name}`,
-    icon: 'none', // 用 none 图标更简洁，或者 'success'
+    icon: 'none',
     duration: 2000
   })
 
-  // 4. 重置导航状态
-  userTrackPolyline.value = []
+  // 重置导航状态
+  navigation.userTrackPolyline.value = []
 
-  // 5. 开始规划新路线
-  await loadNavigationRoute()
-}
-
-const hideTargetModal = () => {
-  showTargetModal.value = false
+  // 开始规划新路线
+  await navigation.loadNavigationRoute()
 }
 
 const closeArrivalModal = () => {
   showArrivalModal.value = false
   gameStore.targetLocation = null
-  routeData.value = null
-  routePolyline.value = []
-  userTrackPolyline.value = []
+  navigation.clearNavigationData()
 }
 
-// 监听目标变化
+// 监听器
 watch(() => gameStore.targetLocation, async () => {
   updatePointer()
-  await loadNavigationRoute()
+  await navigation.loadNavigationRoute()
 })
 
-// 监听用户位置变化
 watch(() => gameStore.userLocation, async () => {
-  if (hasTarget.value) {
+  if (navigation.hasTarget.value) {
     updatePointer()
-    await loadNavigationRoute()
+    await navigation.loadNavigationRoute()
   }
 
   if (isFollowingUser.value && mapContext.value) {
@@ -850,23 +498,18 @@ watch(() => gameStore.userLocation, async () => {
   }
 })
 
-// 监听距离变化，检测到达
-watch(() => distanceToTarget.value, (newDistance, oldDistance) => {
-  if (hasTarget.value && newDistance < 10 && oldDistance >= 10 && !showArrivalModal.value) {
+watch(() => navigation.distanceToTarget.value, (newDistance, oldDistance) => {
+  if (navigation.hasTarget.value && newDistance < 10 && oldDistance >= 10 && !showArrivalModal.value) {
     showArrivalModal.value = true
     uni.vibrateShort({
       type: 'heavy'
     })
-
-    console.log('到达目的地，总轨迹点数:', userTrackPolyline.value.length)
   }
 })
 
 onMounted(() => {
-  // 获取地图上下文
   mapContext.value = uni.createMapContext('navigationMap')
 
-  // 初始化平滑处理状态
   smoothHeading.value = deviceHeading.value
   lastUpdateTime.value = Date.now()
 
@@ -874,13 +517,10 @@ onMounted(() => {
   startCompass()
   startTrackRecording()
 
-  // 简化初始化日志（只输出一次）
   console.log('🧭 雷达导航系统启动 - 固定底盘，0°=正前方')
-  console.log(`📍 初始状态: 朝向=${deviceHeading.value}°, 指针=${pointerAngle.value}°`)
 
-  // 初始加载路线
-  if (hasTarget.value) {
-    loadNavigationRoute()
+  if (navigation.hasTarget.value) {
+    navigation.loadNavigationRoute()
   }
 })
 
@@ -898,13 +538,11 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-// 全屏地图
 .navigation-map {
   width: 100%;
   height: 100%;
 }
 
-// 地图控制按钮
 .map-controls {
   position: absolute;
   top: calc(var(--status-bar-height) + 120px);
@@ -943,289 +581,6 @@ onUnmounted(() => {
   }
 }
 
-// 顶部HUD卡片
-.top-hud-card {
-  position: absolute;
-  top: calc(var(--status-bar-height) + 44px + 20px);
-  left: 20px;
-  right: 20px;
-  background: rgba(0, 77, 64, 0.85);
-  backdrop-filter: blur(15px);
-  border-radius: 16px;
-  border: 2px solid rgba(255, 215, 0, 0.4);
-  padding: 16px 20px;
-  z-index: 100;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-
-  .hud-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-
-    .nav-icon {
-      width: 50px;
-      height: 50px;
-      background: rgba(255, 215, 0, 0.15);
-      border: 2px solid rgba(255, 215, 0, 0.6);
-      border-radius: 25px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      .nav-symbol {
-        font-size: 28px;
-      }
-    }
-
-    .nav-info {
-      flex: 1;
-
-      .nav-instruction {
-        display: block;
-        color: #FFFFFF;
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 4px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      }
-
-      .target-name {
-        display: block;
-        color: rgba(255, 215, 0, 0.8);
-        font-size: 14px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      }
-    }
-
-    .nav-actions {
-      .action-btn {
-        width: 40px;
-        height: 40px;
-        background: rgba(255, 215, 0, 0.2);
-        border: 1px solid rgba(255, 215, 0, 0.4);
-        border-radius: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        .action-icon {
-          font-size: 18px;
-        }
-      }
-    }
-  }
-}
-
-// 底部仪表盘
-.bottom-dashboard {
-  position: absolute;
-  bottom: 20px;
-  bottom: calc(20px + env(safe-area-inset-bottom));
-  left: 20px;
-  right: 20px;
-  display: flex;
-  gap: 20px;
-  z-index: 100;
-
-  // 迷你罗盘
-  .mini-compass-container {
-    width: 100px;
-    height: 100px;
-    background: rgba(0, 50, 50, 0.9);
-    backdrop-filter: blur(15px);
-    border: 2px solid rgba(255, 215, 0, 0.6);
-    border-radius: 50px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-
-    // 刻度盘容器 (固定底盘)
-    .mini-dial {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 70px;
-      height: 70px;
-      transform: translate(-50%, -50%);
-
-      .dial-ring {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        border: 2px solid rgba(255, 215, 0, 0.4);
-        border-radius: 50%;
-      }
-
-      // 装饰性刻度线容器
-      .dial-ticks {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-
-        .tick {
-          position: absolute;
-          border-radius: 1px;
-
-          // 主方向刻度线（更粗更亮）
-          &.tick-major {
-            background: #FFD700;
-            box-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
-
-            &.tick-top {
-              top: 0;
-              left: 50%;
-              transform: translateX(-50%);
-              width: 4px;
-              height: 12px;
-              box-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
-            }
-
-            &.tick-right {
-              top: 50%;
-              right: 0;
-              transform: translateY(-50%);
-              width: 10px;
-              height: 3px;
-            }
-
-            &.tick-bottom {
-              bottom: 0;
-              left: 50%;
-              transform: translateX(-50%);
-              width: 4px;
-              height: 12px;
-            }
-
-            &.tick-left {
-              top: 50%;
-              left: 0;
-              transform: translateY(-50%);
-              width: 10px;
-              height: 3px;
-            }
-          }
-
-          // 次要刻度线（细，对角方向）
-          &.tick-minor {
-            background: rgba(255, 215, 0, 0.4);
-
-            &.tick-top-right {
-              top: 8px;
-              right: 8px;
-              width: 6px;
-              height: 2px;
-              transform: rotate(45deg);
-            }
-
-            &.tick-bottom-right {
-              bottom: 8px;
-              right: 8px;
-              width: 6px;
-              height: 2px;
-              transform: rotate(-45deg);
-            }
-
-            &.tick-bottom-left {
-              bottom: 8px;
-              left: 8px;
-              width: 6px;
-              height: 2px;
-              transform: rotate(45deg);
-            }
-
-            &.tick-top-left {
-              top: 8px;
-              left: 8px;
-              width: 6px;
-              height: 2px;
-              transform: rotate(-45deg);
-            }
-          }
-        }
-      }
-    }
-
-    // 指针容器 (兄弟节点)
-    .mini-pointer {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 35px;
-      height: 35px;
-      transform: translate(-50%, -50%);
-      transition: transform 0.2s linear;
-
-      .pointer-arrow {
-        position: absolute;
-        top: 0;
-        left: 50%;
-        width: 0;
-        height: 0;
-        transform: translateX(-50%);
-        border-left: 4px solid transparent;
-        border-right: 4px solid transparent;
-        border-bottom: 20px solid #FF6B6B;
-        filter: drop-shadow(0 2px 4px rgba(255, 107, 107, 0.3));
-      }
-
-      .pointer-center {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 8px;
-        height: 8px;
-        background: radial-gradient(circle, #FFD700 0%, #FF6B6B 100%);
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-        box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
-      }
-    }
-
-    .mini-compass-label {
-      color: rgba(255, 215, 0, 0.8);
-      font-size: 10px;
-      font-family: 'SimSun', 'STSong', serif;
-      margin-top: 2px;
-    }
-  }
-
-  // 数据面板
-  .data-panel {
-    flex: 1;
-    background: rgba(0, 50, 50, 0.9);
-    backdrop-filter: blur(15px);
-    border: 2px solid rgba(255, 215, 0, 0.6);
-    border-radius: 16px;
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-
-    .data-item {
-      text-align: center;
-
-      .data-label {
-        display: block;
-        color: rgba(255, 215, 0, 0.7);
-        font-size: 12px;
-        margin-bottom: 4px;
-        font-family: 'SimSun', 'STSong', serif;
-      }
-
-      .data-value {
-        display: block;
-        color: #FFD700;
-        font-size: 18px;
-        font-weight: bold;
-        font-family: 'SimSun', 'STSong', serif;
-      }
-    }
-  }
-}
-
-// 加载状态
 .loading-overlay {
   position: fixed;
   top: 0;
@@ -1269,131 +624,6 @@ onUnmounted(() => {
   to { transform: rotate(360deg); }
 }
 
-// 目标选择器
-.target-selector-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(10px);
-}
-
-.target-selector {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-height: 70vh;
-  background: linear-gradient(180deg, #004D40 0%, #00695C 100%);
-  border-radius: 24rpx 24rpx 0 0;
-  padding: 0;
-  padding-bottom: env(safe-area-inset-bottom);
-  animation: slideUp 0.3s ease;
-  width: 100%;
-  box-sizing: border-box;
-
-  .selector-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 30px;
-    box-sizing: border-box;
-
-    .selector-title {
-      color: #FFD700;
-      font-size: 32rpx;
-      font-weight: bold;
-      font-family: 'SimSun', 'STSong', serif;
-    }
-
-    .close-btn {
-      width: 50rpx;
-      height: 50rpx;
-      border-radius: 50%;
-      background: rgba(212, 175, 55, 0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #FFD700;
-      font-size: 32rpx;
-    }
-  }
-
-  .poi-list {
-    width: 100%;
-    max-height: 60vh;
-    padding: 0 30rpx; // 给左右留出空隙，不要贴边
-    overflow-y: auto;
-    box-sizing: border-box;
-
-    .poi-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 24rpx 32rpx; // 增加卡片内部呼吸感
-      border-radius: 16px;
-      margin-bottom: 16rpx;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(212, 175, 55, 0.2);
-      width: 100%;
-      box-sizing: border-box;
-
-      &.selected {
-        background: rgba(212, 175, 55, 0.2);
-        border-color: #FFD700;
-      }
-
-      .poi-info {
-        flex: 1;
-        min-width: 0; // 关键：防止文本溢出撑开容器
-        margin-right: 20rpx;
-
-        .poi-name {
-          color: #FFD700;
-          font-size: 28rpx;
-          font-weight: bold;
-          display: block;
-          margin-bottom: 4px;
-          font-family: 'SimSun', 'STSong', serif;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .poi-distance {
-          color: rgba(212, 175, 55, 0.7);
-          font-size: 22rpx;
-          font-family: 'SimSun', 'STSong', serif;
-        }
-      }
-
-      .poi-icon {
-        flex-shrink: 0; // 关键：图标永不缩小
-        font-size: 36rpx;
-        width: 40rpx;
-        text-align: center;
-        margin-left: 20rpx; // 跟文字保持距离
-      }
-    }
-  }
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-// 到达提示
 .arrival-overlay {
   position: fixed;
   top: 0;
