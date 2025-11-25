@@ -71,18 +71,11 @@
     <view class="bottom-dashboard">
       <!-- 迷你罗盘 -->
       <view class="mini-compass-container">
-        <!-- 刻度盘容器 -->
-        <view
-          class="mini-dial"
-          :style="{ transform: `translate(-50%, -50%) rotate(${-deviceHeading}deg)` }"
-        >
+        <!-- 刻度盘容器 (固定底盘) -->
+        <view class="mini-dial">
           <view class="dial-ring"></view>
-          <view class="dial-directions">
-            <text class="dial-label dial-n">N</text>
-            <text class="dial-label dial-e">E</text>
-            <text class="dial-label dial-s">S</text>
-            <text class="dial-label dial-w">W</text>
-          </view>
+          <!-- 顶部方向标记 (正前方) -->
+          <view class="dial-top-mark"></view>
         </view>
 
         <!-- 指针容器 (兄弟节点，避免嵌套旋转叠加) -->
@@ -547,12 +540,12 @@ const throttledUpdateUI = () => {
   }
 }
 
-// 更新指针角度 - 修正兄弟节点架构算法
+// 更新指针角度 - 雷达模式算法
 const updatePointer = () => {
   if (hasTarget.value) {
     const bearing = calculateBearing()
-    // 修正：指针必须减去设备朝向，才能在屏幕上指向正确的相对方向
-    // 这样它才能和"逆向旋转"的刻度盘对齐
+    // 雷达模式：指针显示目标相对于用户正前方的角度
+    // 0° = 正前方，90° = 正右方，180° = 正后方，270° = 正左方
     const relativeAngle = ((bearing - deviceHeading.value) + 360) % 360
     pointerAngle.value = relativeAngle
   } else {
@@ -853,7 +846,7 @@ onMounted(() => {
   startTrackRecording()
 
   // 简化初始化日志（只输出一次）
-  console.log('🧭 罗盘导航系统启动 - 兄弟节点架构，0°=北方')
+  console.log('🧭 雷达导航系统启动 - 固定底盘，0°=正前方')
   console.log(`📍 初始状态: 朝向=${deviceHeading.value}°, 指针=${pointerAngle.value}°`)
 
   // 初始加载路线
@@ -1019,7 +1012,7 @@ onUnmounted(() => {
     justify-content: center;
     position: relative;
 
-    // 刻度盘容器
+    // 刻度盘容器 (固定底盘)
     .mini-dial {
       position: absolute;
       top: 50%;
@@ -1027,7 +1020,6 @@ onUnmounted(() => {
       width: 70px;
       height: 70px;
       transform: translate(-50%, -50%);
-      transition: transform 0.2s linear;
 
       .dial-ring {
         position: absolute;
@@ -1037,42 +1029,17 @@ onUnmounted(() => {
         border-radius: 50%;
       }
 
-      .dial-directions {
+      // 顶部方向标记 (正前方)
+      .dial-top-mark {
         position: absolute;
-        width: 100%;
-        height: 100%;
-
-        .dial-label {
-          position: absolute;
-          color: #FFD700;
-          font-size: 10px;
-          font-weight: bold;
-          font-family: 'SimSun', 'STSong', serif;
-
-          &.dial-n {
-            top: 2px;
-            left: 50%;
-            transform: translateX(-50%);
-          }
-
-          &.dial-e {
-            right: 2px;
-            top: 50%;
-            transform: translateY(-50%);
-          }
-
-          &.dial-s {
-            bottom: 2px;
-            left: 50%;
-            transform: translateX(-50%);
-          }
-
-          &.dial-w {
-            left: 2px;
-            top: 50%;
-            transform: translateY(-50%);
-          }
-        }
+        top: 2px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 8px;
+        height: 8px;
+        background: #FFD700;
+        border-radius: 50%;
+        box-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
       }
     }
 
