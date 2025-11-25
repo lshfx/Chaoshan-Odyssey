@@ -148,7 +148,7 @@
   })
 
   const mapMarkers = computed(() => {
-    // 获取基于剧情解锁的POI标记
+    // 获取基于剧情解锁的POI标记（已经包含正确的ID映射）
     const unlockedMarkers = gameStore.visibleMarkers
 
     // 添加玩家位置标记 - 使用本地静态资源路径
@@ -156,17 +156,27 @@
       id: 999, // 数字ID，确保在所有其他标记之上
       latitude: gameStore.userLocation.latitude,
       longitude: gameStore.userLocation.longitude,
-      iconPath: '/static/my-location.png', // 修复：使用本地静态资源路径
-      width: 40, // 增大尺寸以确保可见性
-      height: 40,
+      iconPath: '/static/my-location.png', // 玩家位置专用图标（蓝色）
+      width: 45, // 稍微增大以与任务点区分
+      height: 45,
       anchor: { x: 0.5, y: 0.5 },
-      zIndex: 999 // 确保在所有标记之上
+      zIndex: 999, // 确保在所有标记之上
+      // 添加简单的标识气泡
+      callout: {
+        content: '我的位置', // 清晰标识这是玩家位置
+        color: '#FFFFFF', // 白色文字
+        fontSize: 11, // 稍小的字体
+        borderRadius: 4,
+        bgColor: '#2196F3', // 蓝色背景，与玩家标记颜色一致
+        padding: 4,
+        display: 'ALWAYS'
+      }
     }
 
     // 添加调试日志
-    console.log('Unlocked Markers:', unlockedMarkers)
-    console.log('Player Marker:', playerMarker)
-    console.log('User Location:', gameStore.userLocation)
+    console.log('POI标记（含ID映射）:', unlockedMarkers.map(m => ({ id: m.id, poiId: m.poiId, name: m.callout?.content })))
+    console.log('玩家位置标记:', playerMarker)
+    console.log('用户位置:', gameStore.userLocation)
 
     // 合并标记数组，玩家位置标记放在最后以确保显示在最上层
     return [...unlockedMarkers, playerMarker]
@@ -190,6 +200,7 @@
 
   const onMarkerTap = (e : any) => {
     const markerId = e.detail.markerId
+    console.log('点击标记ID:', markerId, '类型:', typeof markerId)
 
     // 跳过玩家位置标记（ID: 999）
     if (markerId === 999) {
@@ -197,21 +208,61 @@
       return
     }
 
-    const poi = gameStore.getPOIById(markerId)
+    // 获取当前解锁的POI标记
+    const unlockedMarkers = gameStore.visibleMarkers
+    console.log('当前解锁的标记:', unlockedMarkers.map(m => ({ id: m.id, poiId: m.poiId })))
 
-    if (!poi) {
-      console.warn('未找到POI数据:', markerId)
+    // 在标记数组中查找匹配的标记（通过数字ID）
+    const clickedMarker = unlockedMarkers.find(marker => marker.id === markerId)
+
+    if (!clickedMarker) {
+      console.error('未找到匹配的地图标记:', markerId)
+      console.error('可用标记ID:', unlockedMarkers.map(m => m.id))
+
+      uni.showToast({
+        title: '错误：未找到对应的POI标记',
+        icon: 'error',
+        duration: 2000
+      })
       return
     }
 
-    console.log('点击POI:', poi.name, 'ID:', poi.id)
+    // 使用marker中的poiId查找POI数据
+    const poiId = clickedMarker.poiId
+    console.log('找到对应的poiId:', poiId)
+
+    if (!poiId) {
+      console.error('标记缺少poiId属性:', clickedMarker)
+      uni.showToast({
+        title: '错误：标记数据不完整',
+        icon: 'error',
+        duration: 2000
+      })
+      return
+    }
+
+    const targetPoi = gameStore.getPOIById(poiId)
+
+    if (!targetPoi) {
+      console.error('使用poiId未找到POI数据:', poiId)
+      console.error('可用的POI ID列表:', unlockedMarkers.map(m => m.poiId))
+
+      uni.showToast({
+        title: `错误：未找到POI数据 ${poiId}`,
+        icon: 'error',
+        duration: 2000
+      })
+      return
+    }
+
+    console.log('点击POI:', targetPoi.name, 'ID:', targetPoi.id, '类型:', typeof targetPoi.id)
 
     // 计算距离
     const distance = calculateDistance(
       gameStore.userLocation.latitude,
       gameStore.userLocation.longitude,
-      poi.latitude,
-      poi.longitude
+      targetPoi.latitude,
+      targetPoi.longitude
     )
 
     console.log('距离POI:', distance, '米')
@@ -222,14 +273,14 @@
 
     if (isDevEnvironment) {
       console.log('开发环境：直接进入AR模式')
-      enterARMode(poi)
+      enterARMode(targetPoi)
       return
     }
 
     // 生产环境：距离校验（100米范围内）
     if (distance <= 100) {
       console.log('距离达标，进入AR模式')
-      enterARMode(poi)
+      enterARMode(targetPoi)
     } else {
       console.log('距离过远，无法进入')
       uni.showToast({

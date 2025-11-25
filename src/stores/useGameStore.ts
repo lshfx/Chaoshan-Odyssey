@@ -69,26 +69,41 @@ export const useGameStore = defineStore('game', () => {
   // 获取可见的地图标记（基于剧情解锁的POI）
   const visibleMarkers = computed(() => {
     const allPois = currentCityData.value?.pois || []
-    return allPois
+    const markers = allPois
       .filter(poi => unlockedPoiIds.value.includes(poi.id))
-      .map(poi => ({
-        id: poi.id,
-        latitude: poi.latitude,
-        longitude: poi.longitude,
-        iconPath: poi.icon || '/static/default-poi-icon.png',
-        width: 32,
-        height: 32,
-        anchor: { x: 0.5, y: 0.5 },
-        callout: {
-          content: poi.name,
-          color: '#333333',
-          fontSize: 12,
-          borderRadius: 4,
-          bgColor: '#ffffff',
-          padding: 8,
-          display: 'ALWAYS'
+      .map((poi, index) => {
+        // 确保POI ID是字符串格式
+        const poiId = String(poi.id)
+        console.log('生成POI标记:', poi.name, '原始ID:', poiId, '类型:', typeof poiId)
+
+        return {
+          // 1. 生成唯一的数字 ID (用于地图组件 - UniApp要求必须是number)
+          id: 900000000 + index, // 从900000000开始，避免与其他ID冲突
+          // 2. 关键：保留原始字符串 ID (用于数据查找)
+          poiId: poiId, // 用于查找POI数据
+          latitude: poi.latitude,
+          longitude: poi.longitude,
+          // 关键修改：使用专用的任务标记图标
+          iconPath: '/static/markers/mission-marker.png', // 使用markers目录下的任务专用图标
+          width: 40,
+          height: 40,
+          anchor: { x: 0.5, y: 0.5 },
+          // 增强气泡显示效果，让任务点更加醒目
+          callout: {
+            content: poi.name,
+            color: '#FFFFFF', // 白色文字，在黑色背景上更醒目
+            fontSize: 12,
+            borderRadius: 6, // 稍微增大圆角
+            bgColor: '#FF4444', // 红色背景，表示任务点
+            padding: 6,
+            display: 'ALWAYS',
+            boxShadow: '0 2px 6px rgba(255, 68, 68, 0.3)' // 添加阴影效果
+          }
         }
-      }))
+      })
+
+    console.log('生成的POI标记数组:', markers.map(m => ({ id: m.id, poiId: m.poiId, name: m.callout.content })))
+    return markers
   })
 
   // 获取当前城市的角色列表

@@ -17,8 +17,14 @@
         class="fallback-image"
         :src="bgImage"
         mode="aspectFill"
+        @load="onImageLoad"
         @error="onImageError"
       />
+
+      <!-- 加载状态指示器 -->
+      <view v-if="isImageLoading && !isCameraAuth" class="loading-indicator">
+        <text class="loading-text">背景加载中...</text>
+      </view>
     </view>
 
     <!-- NPC立绘层 (z-index: 10) -->
@@ -61,8 +67,10 @@ const gameStore = useGameStore()
 
 // 响应式变量
 const isCameraAuth = ref<boolean>(false)
-const bgImage = ref<string>('/static/default-bg.jpg')
+const bgImage = ref<string>('/static/ar_fallback.png')
 const npcImage = ref<string>('/static/default-npc.png')
+const isImageLoading = ref<boolean>(true)
+const hasImageError = ref<boolean>(false)
 
 // 路由参数
 const routeParams = ref<{
@@ -84,6 +92,11 @@ const checkCameraPermission = () => {
     if (systemInfo.platform === 'devtools') {
       console.log('检测到开发工具，自动降级到静态背景')
       isCameraAuth.value = false
+      // 确保使用黑色背景作为fallback
+      if (!hasImageError.value && isImageLoading.value) {
+        bgImage.value = '/static/ar_fallback.png'
+        isImageLoading.value = false
+      }
       return
     }
 
@@ -98,6 +111,13 @@ const checkCameraPermission = () => {
         console.log('摄像头权限获取失败:', err)
         isCameraAuth.value = false
 
+        // 确保在权限被拒绝时使用合适的背景图片
+        if (!hasImageError.value && isImageLoading.value) {
+          // 如果还在加载中，直接使用黑色背景
+          bgImage.value = '/static/ar_fallback.png'
+          isImageLoading.value = false
+        }
+
         // 显示权限被拒绝的提示
         uni.showToast({
           title: '摄像头权限被拒绝，显示静态背景',
@@ -109,6 +129,12 @@ const checkCameraPermission = () => {
   } catch (error) {
     console.error('权限检查出错:', error)
     isCameraAuth.value = false
+
+    // 异常情况下确保有背景图片
+    if (!hasImageError.value && isImageLoading.value) {
+      bgImage.value = '/static/ar_fallback.png'
+      isImageLoading.value = false
+    }
   }
 }
 
@@ -132,8 +158,17 @@ const loadData = () => {
   if (poiId) {
     currentPOI.value = cityData.pois?.find((poi: any) => poi.id === poiId)
     if (currentPOI.value && currentPOI.value.background) {
+      // 尝试加载POI背景图片
       bgImage.value = currentPOI.value.background
-      console.log('加载POI背景:', currentPOI.value.name)
+      isImageLoading.value = true
+      hasImageError.value = false
+      console.log('尝试加载POI背景:', currentPOI.value.name, currentPOI.value.background)
+    } else {
+      // POI没有背景图片，使用默认黑色背景
+      bgImage.value = '/static/ar_fallback.png'
+      isImageLoading.value = false
+      hasImageError.value = false
+      console.log('POI无背景图片，使用默认黑色背景:', currentPOI.value?.name)
     }
   }
 
@@ -176,10 +211,31 @@ const generateARScript = () => {
   console.log('生成AR剧情脚本，对话数量:', script.length)
 }
 
+// 图片加载成功处理
+const onImageLoad = () => {
+  console.log('背景图片加载成功:', bgImage.value)
+  isImageLoading.value = false
+  hasImageError.value = false
+}
+
 // 图片加载失败处理
 const onImageError = () => {
-  console.log('背景图片加载失败，使用默认图片')
-  bgImage.value = '/static/default-bg.jpg'
+  console.log('背景图片加载失败，切换到黑色背景')
+  hasImageError.value = true
+  isImageLoading.value = false
+
+  // 如果POI背景加载失败，使用黑色背景图
+  if (bgImage.value !== '/static/ar_fallback.png') {
+    bgImage.value = '/static/ar_fallback.png'
+    console.log('已切换到默认黑色背景')
+
+    // 提示用户（可选，避免干扰用户体验可以注释掉）
+    // uni.showToast({
+    //   title: '背景图片加载失败，使用默认背景',
+    //   icon: 'none',
+    //   duration: 2000
+    // })
+  }
 }
 
 const onNpcError = () => {
@@ -286,6 +342,28 @@ onLoad((options) => {
   object-fit: cover;
 }
 
+.loading-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-text {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 500;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 8px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
 /* NPC层 */
 .npc-layer {
   position: absolute;
@@ -385,5 +463,15 @@ page {
   .exit-btn {
     background: rgba(0, 0, 0, 0.85);
   }
+}
+
+/* 黑色背景优化 - 确保fallback图片正确显示 */
+.ar-page .fallback-image[src*="ar_fallback.png"] {
+  background-color: #000000;
+}
+
+/* 防止图片加载时的白色闪烁 */
+.fallback-image {
+  background-color: #000000;
 }
 </style>
