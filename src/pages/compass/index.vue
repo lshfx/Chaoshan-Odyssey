@@ -72,7 +72,10 @@
       <!-- 迷你罗盘 -->
       <view class="mini-compass-container">
         <!-- 刻度盘容器 -->
-        <view class="mini-dial" :style="{ transform: `translate(-50%, -50%) rotate(${-deviceHeading}deg)` }">
+        <view
+          class="mini-dial"
+          :style="{ transform: `translate(-50%, -50%) rotate(${-deviceHeading}deg)` }"
+        >
           <view class="dial-ring"></view>
           <view class="dial-directions">
             <text class="dial-label dial-n">N</text>
@@ -83,7 +86,10 @@
         </view>
 
         <!-- 指针容器 (兄弟节点，避免嵌套旋转叠加) -->
-        <view class="mini-pointer" :style="{ transform: `translate(-50%, -50%) rotate(${pointerAngle}deg)` }">
+        <view
+          class="mini-pointer"
+          :style="{ transform: `translate(-50%, -50%) rotate(${pointerAngle}deg)` }"
+        >
           <view class="pointer-arrow"></view>
           <view class="pointer-center"></view>
         </view>
@@ -190,10 +196,8 @@ const routeDuration = ref(0)
 const currentSpeed = ref('0 km/h')
 const isLoadingRoute = ref(false)
 
-// 轨迹记录 (用于腾讯绑路API)
-const trackHistory = ref<Array<[number, number, number, number, number]>>([])
+// 轨迹记录 (简化版)
 const trackTimer = ref<any>(null)
-const snapRoadTimer = ref<any>(null)
 
 // UI状态
 const showTargetModal = ref(false)
@@ -275,13 +279,13 @@ const mapPolylines = computed(() => {
     })
   }
 
-  // 用户实际轨迹 (金色)
+  // 用户实际轨迹 (金色虚线)
   if (userTrackPolyline.value.length > 1) {
     polylines.push({
       points: userTrackPolyline.value,
       color: '#FFD700',
       width: 4,
-      dottedLine: false,
+      dottedLine: true,
       arrowLine: false,
       borderWidth: 1,
       borderColor: '#FFA500'
@@ -432,40 +436,6 @@ const fetchWalkingRoute = async (fromLat: number, fromLng: number, toLat: number
   }
 }
 
-// 腾讯绑路API - 轨迹纠偏
-const snapToRoad = async (track: Array<[number, number, number, number, number]>) => {
-  if (track.length < 2) return null
-
-  try {
-    const url = 'https://apis.map.qq.com/ws/snaptoroads/v1/'
-    const payload = {
-      track: track,
-      mode: 'walking',
-      smoothing: 1
-    }
-
-    // 注意：实际环境中可能需要代理服务器来处理跨域
-    const response = await uni.request({
-      url: url,
-      method: 'POST',
-      data: payload,
-      header: {
-        'Content-Type': 'application/json'
-      }
-    })
-
-    if (response.statusCode === 200 && typeof response.data === 'object' && response.data.status === 0) {
-      return response.data.result
-    } else {
-      console.error('腾讯绑路API调用失败:', response.data)
-      return null
-    }
-  } catch (error) {
-    console.error('轨迹纠偏失败:', error)
-    return null
-  }
-}
-
 // 解析导航指令
 const parseNavigationInstructions = (route: any) => {
   if (!route || !route.routes || route.routes.length === 0) {
@@ -507,7 +477,6 @@ const getNavigationSymbol = () => {
   if (distance < 200) return '🚶'
 
   // HUD显示相对方位：目标在我的哪个方向
-  // 必须使用相对计算：目标方位角 - 设备朝向
   const bearing = calculateBearing()
   const relativeAngle = ((bearing - deviceHeading.value) + 360) % 360
 
@@ -557,7 +526,6 @@ const smoothCompassData = (targetHeading: number) => {
   }
 
   // 线性插值 (Lerp factor = 0.15)
-  // 指针会"追"着真实值跑，过滤掉高频抖动
   const lerpFactor = 0.15
   smoothHeading.value += (adjustedTarget - smoothHeading.value) * lerpFactor
 
@@ -579,15 +547,12 @@ const throttledUpdateUI = () => {
   }
 }
 
-// 更新指针角度
+// 更新指针角度 - 修正为兄弟节点架构逻辑
 const updatePointer = () => {
   if (hasTarget.value) {
     const bearing = calculateBearing()
-
-    // 在兄弟节点架构下，指针相对于屏幕的旋转角度 = 目标方位角 - 设备朝向
-    // 这样可以确保指针指向相对于用户视角的正确方向
-    const relativeAngle = ((bearing - deviceHeading.value) + 360) % 360
-    pointerAngle.value = relativeAngle
+    // 兄弟节点架构：指针直接指向目标的绝对角度
+    pointerAngle.value = bearing
   } else {
     // 无目标时指针归零（指向用户正前方）
     pointerAngle.value = 0
@@ -675,54 +640,28 @@ const stopCompass = () => {
   }
 }
 
-// 开始轨迹记录
+// 简化的轨迹记录
 const startTrackRecording = () => {
   trackTimer.value = setInterval(() => {
     if (gameStore.userLocation) {
-      const now = Math.floor(Date.now() / 1000)
-      const trackPoint: [number, number, number, number, number] = [
-        now,
-        gameStore.userLocation.longitude,
-        gameStore.userLocation.latitude,
-        0, // 速度，暂时设为0
-        deviceHeading.value
-      ]
-
-      trackHistory.value.push(trackPoint)
-
-      // 更新用户轨迹显示
+      // 直接将当前坐标 push 到 userTrackPolyline
       userTrackPolyline.value.push({
         latitude: gameStore.userLocation.latitude,
         longitude: gameStore.userLocation.longitude
       })
 
       // 限制轨迹点数量，避免过多数据
-      if (trackHistory.value.length > 100) {
-        trackHistory.value.shift()
+      if (userTrackPolyline.value.length > 200) {
+        userTrackPolyline.value.shift()
       }
+
+      console.log('记录轨迹点:', {
+        lat: gameStore.userLocation.latitude,
+        lng: gameStore.userLocation.longitude,
+        totalPoints: userTrackPolyline.value.length
+      })
     }
-  }, 5000) // 每5秒记录一次
-}
-
-// 调用绑路API处理轨迹
-const processTrackWithSnapRoad = async () => {
-  if (trackHistory.value.length >= 10) {
-    const snapResult = await snapToRoad(trackHistory.value)
-    if (snapResult && snapResult.track) {
-      // 更新轨迹显示
-      const smoothedPolyline = snapResult.track.map((point: any) => ({
-        latitude: point.lat,
-        longitude: point.lng
-      }))
-
-      // 替换原始轨迹为平滑后的轨迹
-      userTrackPolyline.value = smoothedPolyline
-      console.log('轨迹纠偏完成，处理了', snapResult.track.length, '个点')
-    }
-
-    // 清空历史记录，准备下一批
-    trackHistory.value = []
-  }
+  }, 3000) // 每3秒记录一次，减少频率
 }
 
 // 停止轨迹记录
@@ -730,11 +669,6 @@ const stopTrackRecording = () => {
   if (trackTimer.value) {
     clearInterval(trackTimer.value)
     trackTimer.value = null
-  }
-
-  if (snapRoadTimer.value) {
-    clearInterval(snapRoadTimer.value)
-    snapRoadTimer.value = null
   }
 }
 
@@ -848,7 +782,7 @@ const isSelectedPOI = (poiId: string) => {
 
 const selectTarget = async (poi: any) => {
   gameStore.setTargetLocation(poi.latitude, poi.longitude, poi.name)
-  hideTargetModal.value()
+  hideTargetModal.value = false
 
   uni.showToast({
     title: `已设置目标：${poi.name}`,
@@ -856,7 +790,6 @@ const selectTarget = async (poi: any) => {
   })
 
   // 清空之前的轨迹
-  trackHistory.value = []
   userTrackPolyline.value = []
 
   // 加载新的导航路线
@@ -872,7 +805,6 @@ const closeArrivalModal = () => {
   gameStore.targetLocation = null
   routeData.value = null
   routePolyline.value = []
-  trackHistory.value = []
   userTrackPolyline.value = []
 }
 
@@ -902,17 +834,9 @@ watch(() => distanceToTarget.value, (newDistance, oldDistance) => {
       type: 'heavy'
     })
 
-    // 到达时处理最后一次轨迹
-    processTrackWithSnapRoad()
+    console.log('到达目的地，总轨迹点数:', userTrackPolyline.value.length)
   }
 })
-
-// 监听器：处理绑路API
-const setupSnapRoadProcessing = () => {
-  snapRoadTimer.value = setInterval(() => {
-    processTrackWithSnapRoad()
-  }, 30000) // 每30秒处理一次轨迹
-}
 
 onMounted(() => {
   // 获取地图上下文
@@ -925,7 +849,6 @@ onMounted(() => {
   updatePointer()
   startCompass()
   startTrackRecording()
-  setupSnapRoadProcessing()
 
   // 简化初始化日志（只输出一次）
   console.log('🧭 罗盘导航系统启动 - 兄弟节点架构，0°=北方')
