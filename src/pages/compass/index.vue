@@ -789,18 +789,23 @@ const isSelectedPOI = (poiId: string) => {
 }
 
 const selectTarget = async (poi: any) => {
+  // 1. 设置全局目标
   gameStore.setTargetLocation(poi.latitude, poi.longitude, poi.name)
-  hideTargetModal.value = false
 
+  // 2. 关键修复：立即关闭弹窗
+  showTargetModal.value = false
+
+  // 3. 用户反馈
   uni.showToast({
-    title: `已设置目标：${poi.name}`,
-    icon: 'success'
+    title: `目标已锁定：${poi.name}`,
+    icon: 'none', // 用 none 图标更简洁，或者 'success'
+    duration: 2000
   })
 
-  // 清空之前的轨迹
+  // 4. 重置导航状态
   userTrackPolyline.value = []
 
-  // 加载新的导航路线
+  // 5. 开始规划新路线
   await loadNavigationRoute()
 }
 
