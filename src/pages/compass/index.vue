@@ -74,8 +74,21 @@
         <!-- 刻度盘容器 (固定底盘) -->
         <view class="mini-dial">
           <view class="dial-ring"></view>
-          <!-- 顶部方向标记 (正前方) -->
-          <view class="dial-top-mark"></view>
+
+          <!-- 装饰性刻度线 -->
+          <view class="dial-ticks">
+            <!-- 主方向刻度线（粗） -->
+            <view class="tick tick-major tick-top"></view>
+            <view class="tick tick-major tick-right"></view>
+            <view class="tick tick-major tick-bottom"></view>
+            <view class="tick tick-major tick-left"></view>
+
+            <!-- 次要刻度线（细） -->
+            <view class="tick tick-minor tick-top-right"></view>
+            <view class="tick tick-minor tick-bottom-right"></view>
+            <view class="tick tick-minor tick-bottom-left"></view>
+            <view class="tick tick-minor tick-top-left"></view>
+          </view>
         </view>
 
         <!-- 指针容器 (兄弟节点，避免嵌套旋转叠加) -->
@@ -1029,17 +1042,92 @@ onUnmounted(() => {
         border-radius: 50%;
       }
 
-      // 顶部方向标记 (正前方)
-      .dial-top-mark {
+      // 装饰性刻度线容器
+      .dial-ticks {
         position: absolute;
-        top: 2px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 8px;
-        height: 8px;
-        background: #FFD700;
-        border-radius: 50%;
-        box-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+        width: 100%;
+        height: 100%;
+
+        .tick {
+          position: absolute;
+          border-radius: 1px;
+
+          // 主方向刻度线（更粗更亮）
+          &.tick-major {
+            background: #FFD700;
+            box-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+
+            &.tick-top {
+              top: 0;
+              left: 50%;
+              transform: translateX(-50%);
+              width: 4px;
+              height: 12px;
+              box-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+            }
+
+            &.tick-right {
+              top: 50%;
+              right: 0;
+              transform: translateY(-50%);
+              width: 10px;
+              height: 3px;
+            }
+
+            &.tick-bottom {
+              bottom: 0;
+              left: 50%;
+              transform: translateX(-50%);
+              width: 4px;
+              height: 12px;
+            }
+
+            &.tick-left {
+              top: 50%;
+              left: 0;
+              transform: translateY(-50%);
+              width: 10px;
+              height: 3px;
+            }
+          }
+
+          // 次要刻度线（细，对角方向）
+          &.tick-minor {
+            background: rgba(255, 215, 0, 0.4);
+
+            &.tick-top-right {
+              top: 8px;
+              right: 8px;
+              width: 6px;
+              height: 2px;
+              transform: rotate(45deg);
+            }
+
+            &.tick-bottom-right {
+              bottom: 8px;
+              right: 8px;
+              width: 6px;
+              height: 2px;
+              transform: rotate(-45deg);
+            }
+
+            &.tick-bottom-left {
+              bottom: 8px;
+              left: 8px;
+              width: 6px;
+              height: 2px;
+              transform: rotate(45deg);
+            }
+
+            &.tick-top-left {
+              top: 8px;
+              left: 8px;
+              width: 6px;
+              height: 2px;
+              transform: rotate(-45deg);
+            }
+          }
+        }
       }
     }
 
