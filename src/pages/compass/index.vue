@@ -335,15 +335,26 @@ const formatDistance = computed(() => {
 
 const formatDuration = computed(() => {
   if (!hasTarget.value) return '--'
-  if (routeDuration.value > 0) {
-    const minutes = Math.floor(routeDuration.value / 60)
-    if (minutes > 60) {
+
+  // API 返回单位为分钟，直接使用
+  const minutes = routeDuration.value
+
+  if (minutes > 0) {
+    if (minutes >= 60) {
       const hours = Math.floor(minutes / 60)
-      return `${hours}h${minutes % 60}m`
+      const mins = Math.round(minutes % 60)
+      return `${hours}小时${mins}分钟`
     }
-    return `${minutes}分钟`
+    if (minutes < 1) {
+      return '< 1分钟'
+    }
+    return `${Math.round(minutes)}分钟`
   }
-  return '计算中'
+
+  // 如果 API 尚未返回结果
+  if (isLoadingRoute.value) return '计算中...'
+
+  return '--'
 })
 
 // 可用的POI列表
