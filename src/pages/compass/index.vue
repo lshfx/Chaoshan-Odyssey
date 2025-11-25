@@ -1,108 +1,113 @@
 <template>
-  <view class="mystic-compass">
+  <view class="map-navigation">
     <!-- 自定义导航栏 -->
     <CustomNavbar
-      title="寻路罗盘"
+      title="实时导航"
       bgColor="#004D40"
       textColor="#FFD700"
       :showBack="true"
     />
 
-    <!-- 顶部目标信息栏 -->
-    <view class="target-header" @tap="showTargetSelector">
-      <view class="target-info">
-        <text class="target-label">当前目标</text>
-        <text class="target-name">{{ targetName || '点击设置' }}</text>
-      </view>
-      <view class="target-actions">
-        <view v-if="hasTarget" class="target-status">
-          <view class="status-dot"></view>
-          <text class="status-text">追踪中</text>
+    <!-- 全屏地图 -->
+    <map
+      id="navigationMap"
+      class="navigation-map"
+      :latitude="mapCenter.latitude"
+      :longitude="mapCenter.longitude"
+      :scale="mapScale"
+      :show-location="true"
+      :enable-traffic="false"
+      :enable-3D="true"
+      :enable-overlooking="true"
+      :enable-zoom="true"
+      :enable-scroll="true"
+      :enable-rotate="false"
+      :markers="mapMarkers"
+      :polyline="mapPolylines"
+      :circles="mapCircles"
+      @markertap="onMarkerTap"
+      @regionchange="onMapRegionChange"
+    >
+      <!-- 地图图层控件 -->
+      <cover-view class="map-controls">
+        <!-- 跟随模式切换按钮 -->
+        <cover-view
+          class="control-btn follow-btn"
+          :class="{ active: isFollowingUser }"
+          @tap="toggleFollowMode"
+        >
+          <cover-view class="control-icon">{{ isFollowingUser ? '🧭' : '🗺️' }}</cover-view>
+        </cover-view>
+
+        <!-- 重置视角按钮 -->
+        <cover-view
+          class="control-btn reset-btn"
+          @tap="resetMapView"
+        >
+          <cover-view class="control-icon">📍</cover-view>
+        </cover-view>
+      </cover-view>
+    </map>
+
+    <!-- 顶部导航HUD卡片 -->
+    <view class="top-hud-card">
+      <view class="hud-header">
+        <view class="nav-icon">
+          <text class="nav-symbol">{{ getNavigationSymbol() }}</text>
         </view>
-        <view class="selector-icon">⚙</view>
-      </view>
-    </view>
-
-    <!-- 罗盘容器 - 严格居中 -->
-    <view class="compass-container">
-      <!-- 外环 - 静态 -->
-      <view class="compass-ring outer-ring"></view>
-
-      <!-- 中环 - 随设备朝向旋转 -->
-      <view
-        class="compass-ring middle-ring"
-        :style="{ transform: `rotate(${deviceHeading}deg)` }"
-      ></view>
-
-      <!-- 内环 - 静态装饰 -->
-      <view class="compass-ring inner-ring"></view>
-
-      <!-- 方位标记 - 静态 -->
-      <view class="direction-markers">
-        <view class="marker marker-n">北</view>
-        <view class="marker marker-e">东</view>
-        <view class="marker marker-s">南</view>
-        <view class="marker marker-w">西</view>
-      </view>
-
-      <!-- 罗盘指针 - 始终可见 -->
-      <view
-        class="mystic-pointer"
-        :class="{
-          'pointer-active': hasTarget,
-          'pointer-idle': !hasTarget,
-          'pointer-searching': !hasTarget
-        }"
-        :style="{
-          transform: `translate(-50%, -50%) rotate(${hasTarget ? pointerAngle : idleRotation}deg)`
-        }"
-      >
-        <!-- 玉石光晕 -->
-        <view class="jade-glow"></view>
-        <!-- 金色箭头 -->
-        <view class="golden-arrow">
-          <view class="arrow-shaft"></view>
-          <view class="arrow-head"></view>
+        <view class="nav-info">
+          <text class="nav-instruction">{{ currentNavigationInstruction }}</text>
+          <text class="target-name">{{ targetName || '请设置导航目标' }}</text>
         </view>
-        <!-- 宝石核心 -->
-        <view class="gem-core">
-          <view class="inner-glow"></view>
-          <view class="gem-center"></view>
+        <view class="nav-actions">
+          <view class="action-btn" @tap="showTargetSelector">
+            <text class="action-icon">🎯</text>
+          </view>
         </view>
       </view>
     </view>
 
-    <!-- 底部导航HUD - 精简版 -->
-    <view class="navigation-hud">
-      <!-- 距离显示 -->
-      <view class="distance-display">
-        <text class="distance-value">{{ formatDistance }}</text>
-        <text class="distance-unit">米</text>
+    <!-- 底部仪表盘 -->
+    <view class="bottom-dashboard">
+      <!-- 迷你罗盘 -->
+      <view class="mini-compass-container">
+        <view class="mini-compass" :style="{ transform: `rotate(${deviceHeading}deg)` }">
+          <view class="mini-ring"></view>
+          <view class="mini-pointer" :style="{ transform: `rotate(${pointerAngle}deg)` }">
+            <view class="mini-arrow"></view>
+          </view>
+          <view class="mini-directions">
+            <text class="mini-dir mini-dir-n">N</text>
+            <text class="mini-dir mini-dir-e">E</text>
+            <text class="mini-dir mini-dir-s">S</text>
+            <text class="mini-dir mini-dir-w">W</text>
+          </view>
+        </view>
+        <text class="mini-compass-label">方位</text>
       </view>
 
-      <!-- 模拟导航指令 -->
-      <view class="navigation-instruction">
-        <text class="instruction-text">{{ navigationInstruction }}</text>
+      <!-- 数据面板 -->
+      <view class="data-panel">
+        <view class="data-item">
+          <text class="data-label">距离</text>
+          <text class="data-value">{{ formatDistance }}</text>
+        </view>
+        <view class="data-item">
+          <text class="data-label">预计</text>
+          <text class="data-value">{{ formatDuration }}</text>
+        </view>
+        <view class="data-item">
+          <text class="data-label">时速</text>
+          <text class="data-value">{{ currentSpeed }}</text>
+        </view>
       </view>
+    </view>
 
-      <!-- 状态信息 -->
-      <view class="status-info">
-        <view class="info-item">
-          <text class="info-label">方位角</text>
-          <text class="info-value">{{ bearingToTarget }}°</text>
-        </view>
-        <view class="info-item">
-          <text class="info-label">朝向</text>
-          <text class="info-value">{{ deviceHeading }}°</text>
-        </view>
-        <view v-if="routeDuration > 0" class="info-item">
-          <text class="info-label">预计</text>
-          <text class="info-value">{{ Math.round(routeDuration / 60) }}分钟</text>
-        </view>
-        <view v-if="isLoadingRoute" class="info-item loading-indicator">
-          <text class="info-label">状态</text>
-          <text class="info-value">规划中</text>
-        </view>
+    <!-- 加载状态指示器 -->
+    <view v-if="isLoadingRoute" class="loading-overlay">
+      <view class="loading-content">
+        <view class="loading-spinner"></view>
+        <text class="loading-text">正在规划路线...</text>
       </view>
     </view>
 
@@ -110,7 +115,7 @@
     <view v-if="showTargetModal" class="target-selector-overlay" @tap="hideTargetSelector">
       <view class="target-selector" @tap.stop>
         <view class="selector-header">
-          <text class="selector-title">选择目标位置</text>
+          <text class="selector-title">选择导航目标</text>
           <view class="close-btn" @tap="hideTargetSelector">×</view>
         </view>
 
@@ -135,7 +140,7 @@
     <!-- 到达提示 -->
     <view v-if="showArrivalModal" class="arrival-overlay">
       <view class="arrival-modal">
-        <view class="arrival-icon">📍</view>
+        <view class="arrival-icon">🎉</view>
         <text class="arrival-title">已到达目的地</text>
         <text class="arrival-subtitle">{{ targetName }}</text>
         <button class="arrival-btn" @tap="closeArrivalModal">确认</button>
@@ -149,174 +154,150 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useGameStore } from '@/stores/useGameStore'
 import CustomNavbar from '@/components/CustomNavbar.vue'
 
-// 腾讯地图配置 - 请替换为实际的密钥
-const TENCENT_MAP_KEY = '5GWBZ-NZUCU-XEYVJ-GP2TW-IZRW5-6AFC7' // 提醒：需要填入真实的腾讯地图API密钥
+// 腾讯地图配置
+const TENCENT_MAP_KEY = '5GWBZ-NZUCU-XEYVJ-GP2TW-IZRW5-6AFC7'
 
 const gameStore = useGameStore()
 
-// 罗盘数据
-const deviceHeading = ref(0) // 设备朝向
-const bearingToTarget = ref(0) // 到目标的方位角
-const pointerAngle = ref(0) // 指针显示角度
-const idleRotation = ref(0) // 空闲状态旋转角度
+// 地图状态
+const mapScale = ref(16)
+const isFollowingUser = ref(true)
+const mapContext = ref<any>(null)
+
+// 设备朝向数据
+const deviceHeading = ref(0)
+const pointerAngle = ref(0)
 const compassTimer = ref<any>(null)
-const idleTimer = ref<any>(null)
 
-// 腾讯地图导航数据
-const routeData = ref<any>(null) // 存储完整的路线数据
-const currentInstruction = ref('') // 当前导航指令
-const routeDistance = ref(0) // 路线总距离
-const routeDuration = ref(0) // 预计步行时间
-const isLoadingRoute = ref(false) // 是否正在加载路线
+// 导航数据
+const routeData = ref<any>(null)
+const routePolyline = ref<any[]>([])
+const userTrackPolyline = ref<any[]>([])
+const currentNavigationInstruction = ref('')
+const routeDistance = ref(0)
+const routeDuration = ref(0)
+const currentSpeed = ref('0 km/h')
+const isLoadingRoute = ref(false)
 
-// 目标选择器
+// 轨迹记录 (用于腾讯绑路API)
+const trackHistory = ref<Array<[number, number, number, number, number]>>([])
+const trackTimer = ref<any>(null)
+const snapRoadTimer = ref<any>(null)
+
+// UI状态
 const showTargetModal = ref(false)
+const showArrivalModal = ref(false)
 
-// 坐标解压算法 (前向差分)
-const unzipPolyline = (coors: number[]) => {
-  // coors 是一个一维数组 [lat1, lng1, dLat2, dLng2, ...]
-  let result: any[] = []
-
-  if (coors.length < 2) return result
-
-  // 前两个是起始绝对坐标
-  let prevLat = coors[0]
-  let prevLng = coors[1]
-  result.push({ latitude: prevLat, longitude: prevLng })
-
-  for (let i = 2; i < coors.length; i += 2) {
-    let dLat = coors[i]
-    let dLng = coors[i + 1]
-    // 前向差分并除以 1000000 还原
-    prevLat = prevLat + dLat / 1000000
-    prevLng = prevLng + dLng / 1000000
-    result.push({ latitude: prevLat, longitude: prevLng })
-  }
-  return result
-}
-
-// 调用腾讯地图步行路线规划API
-const fetchWalkingRoute = async (fromLat: number, fromLng: number, toLat: number, toLng: number) => {
-  if (TENCENT_MAP_KEY === 'YOUR_KEY_HERE') {
-    console.warn('腾讯地图API密钥未配置，使用模拟导航')
-    return null
-  }
-
-  isLoadingRoute.value = true
-
-  try {
-    const url = `https://apis.map.qq.com/ws/direction/v1/walking/`
-    const params = {
-      from: `${fromLat},${fromLng}`,
-      to: `${toLat},${toLng}`,
-      key: TENCENT_MAP_KEY,
-      output: 'json'
+// 地图中心点
+const mapCenter = computed(() => {
+  if (isFollowingUser.value && gameStore.userLocation) {
+    return {
+      latitude: gameStore.userLocation.latitude,
+      longitude: gameStore.userLocation.longitude
     }
+  }
 
-    // 构建查询字符串
-    const queryString = Object.entries(params)
-      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
-      .join('&')
+  if (gameStore.userLocation) {
+    return gameStore.userLocation
+  }
 
-    const response = await uni.request({
-      url: `${url}?${queryString}`,
-      method: 'GET'
+  return { latitude: 23.5360, longitude: 116.3560 } // 揭阳市中心
+})
+
+// 地图标记
+const mapMarkers = computed(() => {
+  const markers = []
+
+  // 用户位置标记
+  if (gameStore.userLocation) {
+    markers.push({
+      id: 'user_location',
+      latitude: gameStore.userLocation.latitude,
+      longitude: gameStore.userLocation.longitude,
+      iconPath: '/static/my-location.png',
+      width: 30,
+      height: 30,
+      anchor: { x: 0.5, y: 0.5 },
+      zIndex: 1000
     })
-
-    if (response.statusCode === 200 && typeof response.data === 'object' && response.data.status === 0) {
-      return response.data.result
-    } else {
-      console.error('腾讯地图API调用失败:', response.data)
-      return null
-    }
-  } catch (error) {
-    console.error('获取路线失败:', error)
-    return null
-  } finally {
-    isLoadingRoute.value = false
-  }
-}
-
-// 解析导航指令
-const parseNavigationInstructions = (route: any) => {
-  if (!route || !route.routes || route.routes.length === 0) {
-    return ''
   }
 
-  const currentRoute = route.routes[0]
-  if (!currentRoute.steps || currentRoute.steps.length === 0) {
-    return ''
+  // 目标位置标记
+  if (gameStore.targetLocation) {
+    markers.push({
+      id: 'target_location',
+      latitude: gameStore.targetLocation.latitude,
+      longitude: gameStore.targetLocation.longitude,
+      iconPath: '/static/markers/mission-marker.png',
+      width: 35,
+      height: 35,
+      anchor: { x: 0.5, y: 0.5 },
+      callout: {
+        content: gameStore.targetLocation.name || '目的地',
+        color: '#FFFFFF',
+        fontSize: 14,
+        borderRadius: 6,
+        bgColor: '#FF4444',
+        padding: 6,
+        display: 'ALWAYS'
+      }
+    })
   }
 
-  // 获取当前步骤的指令（简化版本，实际应该基于用户位置判断）
-  const firstStep = currentRoute.steps[0]
+  return markers
+})
 
-  let instruction = ''
+// 地图路线 (规划路线 + 用户轨迹)
+const mapPolylines = computed(() => {
+  const polylines = []
 
-  // 根据 maneuver 指令生成中文导航
-  switch (firstStep.maneuver) {
-    case '直行':
-      instruction = `沿${firstStep.road_name || '道路'}直行`
-      break
-    case '左转':
-      instruction = `在前方路口左转进入${firstStep.road_name || '道路'}`
-      break
-    case '右转':
-      instruction = `在前方路口右转进入${firstStep.road_name || '道路'}`
-      break
-    case '掉头':
-      instruction = `在前方掉头`
-      break
-    case '左转通过':
-      instruction = `左转通过${firstStep.road_name || '路口'}`
-      break
-    case '右转通过':
-      instruction = `右转通过${firstStep.road_name || '路口'}`
-      break
-    default:
-      instruction = `沿${firstStep.road_name || '当前道路'}步行`
+  // 规划的导航路线 (青色)
+  if (routePolyline.value.length > 0) {
+    polylines.push({
+      points: routePolyline.value,
+      color: '#00897B',
+      width: 8,
+      dottedLine: false,
+      arrowLine: true,
+      borderWidth: 2,
+      borderColor: '#FFFFFF'
+    })
   }
 
-  // 添加距离信息
-  if (firstStep.distance) {
-    const distance = Math.round(firstStep.distance)
-    instruction += ` ${distance}米`
+  // 用户实际轨迹 (金色)
+  if (userTrackPolyline.value.length > 1) {
+    polylines.push({
+      points: userTrackPolyline.value,
+      color: '#FFD700',
+      width: 4,
+      dottedLine: false,
+      arrowLine: false,
+      borderWidth: 1,
+      borderColor: '#FFA500'
+    })
   }
 
-  return instruction
-}
+  return polylines
+})
 
-// 加载导航路线
-const loadNavigationRoute = async () => {
-  if (!gameStore.userLocation || !gameStore.targetLocation) {
-    routeData.value = null
-    currentInstruction.value = ''
-    return
+// 地图圆形区域 (可选的精度圆圈)
+const mapCircles = computed(() => {
+  const circles = []
+
+  // GPS精度圆圈
+  if (gameStore.userLocation) {
+    circles.push({
+      latitude: gameStore.userLocation.latitude,
+      longitude: gameStore.userLocation.longitude,
+      radius: 20,
+      fillColor: 'rgba(0, 137, 123, 0.1)',
+      strokeColor: 'rgba(0, 137, 123, 0.3)',
+      strokeWidth: 2
+    })
   }
 
-  const route = await fetchWalkingRoute(
-    gameStore.userLocation.latitude,
-    gameStore.userLocation.longitude,
-    gameStore.targetLocation.latitude,
-    gameStore.targetLocation.longitude
-  )
-
-  if (route) {
-    routeData.value = route
-    routeDistance.value = route.routes[0]?.distance || 0
-    routeDuration.value = route.routes[0]?.duration || 0
-    currentInstruction.value = parseNavigationInstructions(route)
-
-    // 解压polyline坐标
-    if (route.routes[0]?.polyline) {
-      const decompressedPath = unzipPolyline(route.routes[0].polyline)
-      console.log('解压后的路径坐标点数:', decompressedPath.length)
-    }
-  } else {
-    routeData.value = null
-    currentInstruction.value = '路线规划失败，请检查网络连接'
-  }
-}
+  return circles
+})
 
 // 计算属性
 const hasTarget = computed(() => !!gameStore.targetLocation)
@@ -325,19 +306,29 @@ const distanceToTarget = computed(() => gameStore.getDistanceToTarget)
 
 const formatDistance = computed(() => {
   if (!hasTarget.value) return '--'
-  // 优先使用API返回的路线距离，其次使用直线距离
   if (routeDistance.value > 0) {
-    return Math.round(routeDistance.value)
+    return `${Math.round(routeDistance.value)}m`
   }
-  return distanceToTarget.value
+  return `${distanceToTarget.value}m`
+})
+
+const formatDuration = computed(() => {
+  if (!hasTarget.value) return '--'
+  if (routeDuration.value > 0) {
+    const minutes = Math.floor(routeDuration.value / 60)
+    if (minutes > 60) {
+      const hours = Math.floor(minutes / 60)
+      return `${hours}h${minutes % 60}m`
+    }
+    return `${minutes}分钟`
+  }
+  return '计算中'
 })
 
 // 可用的POI列表
 const availablePOIs = computed(() => {
-  // 优先使用游戏数据中的POI
   const gamePOIs = gameStore.currentCityPOIs || []
 
-  // 如果没有游戏数据，提供测试数据
   if (gamePOIs.length === 0) {
     return [
       {
@@ -366,13 +357,6 @@ const availablePOIs = computed(() => {
         latitude: 23.5316,
         longitude: 116.3642,
         icon: '🍵'
-      } as any,
-      {
-        id: 'test_qiaopi',
-        name: '侨批博物馆',
-        latitude: 23.5402,
-        longitude: 116.3658,
-        icon: '📜'
       } as any
     ]
   }
@@ -380,35 +364,150 @@ const availablePOIs = computed(() => {
   return gamePOIs
 })
 
-// 真实导航指令
-const navigationInstruction = computed(() => {
-  if (!hasTarget.value) return '请先设置导航目标'
+// 坐标解压算法 (前向差分)
+const unzipPolyline = (coors: number[]) => {
+  let result: any[] = []
 
-  // 如果正在加载路线
-  if (isLoadingRoute.value) {
-    return '正在规划路线...'
+  if (coors.length < 2) return result
+
+  let prevLat = coors[0]
+  let prevLng = coors[1]
+  result.push({ latitude: prevLat, longitude: prevLng })
+
+  for (let i = 2; i < coors.length; i += 2) {
+    let dLat = coors[i]
+    let dLng = coors[i + 1]
+    prevLat = prevLat + dLat / 1000000
+    prevLng = prevLng + dLng / 1000000
+    result.push({ latitude: prevLat, longitude: prevLng })
   }
+  return result
+}
 
-  // 如果有真实的API导航数据，优先使用
-  if (currentInstruction.value) {
-    return currentInstruction.value
-  }
-
-  // 如果没有API密钥或API调用失败，回退到简单模拟
+// 腾讯地图步行路线规划API
+const fetchWalkingRoute = async (fromLat: number, fromLng: number, toLat: number, toLng: number) => {
   if (TENCENT_MAP_KEY === 'YOUR_KEY_HERE') {
-    return '请配置腾讯地图API密钥以获得真实导航'
+    console.warn('腾讯地图API密钥未配置，使用模拟导航')
+    return null
   }
 
-  // 基本回退指令
-  const distance = distanceToTarget.value
-  if (distance < 10) {
-    return '目的地就在眼前！'
-  } else if (distance < 50) {
-    return '目标很近，请仔细观察周围环境'
-  } else {
-    return `目标在前方约${distance}米处`
+  try {
+    const url = `https://apis.map.qq.com/ws/direction/v1/walking/`
+    const params = {
+      from: `${fromLat},${fromLng}`,
+      to: `${toLat},${toLng}`,
+      key: TENCENT_MAP_KEY,
+      output: 'json'
+    }
+
+    const queryString = Object.entries(params)
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+      .join('&')
+
+    const response = await uni.request({
+      url: `${url}?${queryString}`,
+      method: 'GET'
+    })
+
+    if (response.statusCode === 200 && typeof response.data === 'object' && response.data.status === 0) {
+      return response.data.result
+    } else {
+      console.error('腾讯地图API调用失败:', response.data)
+      return null
+    }
+  } catch (error) {
+    console.error('获取路线失败:', error)
+    return null
   }
-})
+}
+
+// 腾讯绑路API - 轨迹纠偏
+const snapToRoad = async (track: Array<[number, number, number, number, number]>) => {
+  if (track.length < 2) return null
+
+  try {
+    const url = 'https://apis.map.qq.com/ws/snaptoroads/v1/'
+    const payload = {
+      track: track,
+      mode: 'walking',
+      smoothing: 1
+    }
+
+    // 注意：实际环境中可能需要代理服务器来处理跨域
+    const response = await uni.request({
+      url: url,
+      method: 'POST',
+      data: payload,
+      header: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (response.statusCode === 200 && typeof response.data === 'object' && response.data.status === 0) {
+      return response.data.result
+    } else {
+      console.error('腾讯绑路API调用失败:', response.data)
+      return null
+    }
+  } catch (error) {
+    console.error('轨迹纠偏失败:', error)
+    return null
+  }
+}
+
+// 解析导航指令
+const parseNavigationInstructions = (route: any) => {
+  if (!route || !route.routes || route.routes.length === 0) {
+    return '请沿当前道路继续前行'
+  }
+
+  const currentRoute = route.routes[0]
+  if (!currentRoute.steps || currentRoute.steps.length === 0) {
+    return '请沿当前道路继续前行'
+  }
+
+  const firstStep = currentRoute.steps[0]
+
+  switch (firstStep.maneuver) {
+    case '直行':
+      return `沿${firstStep.road_name || '道路'}直行 ${firstStep.distance ? Math.round(firstStep.distance) + '米' : ''}`
+    case '左转':
+      return `在前方路口左转进入${firstStep.road_name || '道路'} ${firstStep.distance ? Math.round(firstStep.distance) + '米' : ''}`
+    case '右转':
+      return `在前方路口右转进入${firstStep.road_name || '道路'} ${firstStep.distance ? Math.round(firstStep.distance) + '米' : ''}`
+    case '掉头':
+      return '在前方掉头'
+    case '左转通过':
+      return `左转通过${firstStep.road_name || '路口'}`
+    case '右转通过':
+      return `右转通过${firstStep.road_name || '路口'}`
+    default:
+      return `沿${firstStep.road_name || '当前道路'}步行 ${firstStep.distance ? Math.round(firstStep.distance) + '米' : ''}`
+  }
+}
+
+// 获取导航符号
+const getNavigationSymbol = () => {
+  if (!hasTarget.value) return '🧭'
+
+  const distance = distanceToTarget.value
+  if (distance < 10) return '🎯'
+  if (distance < 50) return '📍'
+  if (distance < 200) return '🚶'
+
+  // 根据朝向判断方向
+  const bearing = calculateBearing()
+  const normalizedAngle = ((bearing - deviceHeading.value) + 360) % 360
+
+  if (normalizedAngle >= 337.5 || normalizedAngle < 22.5) return '⬆️'
+  if (normalizedAngle >= 22.5 && normalizedAngle < 67.5) return '↗️'
+  if (normalizedAngle >= 67.5 && normalizedAngle < 112.5) return '➡️'
+  if (normalizedAngle >= 112.5 && normalizedAngle < 157.5) return '↘️'
+  if (normalizedAngle >= 157.5 && normalizedAngle < 202.5) return '⬇️'
+  if (normalizedAngle >= 202.5 && normalizedAngle < 247.5) return '↙️'
+  if (normalizedAngle >= 247.5 && normalizedAngle < 292.5) return '⬅️'
+  return '↖️'
+}
 
 // 计算方位角
 const calculateBearing = () => {
@@ -430,34 +529,11 @@ const calculateBearing = () => {
   return bearing
 }
 
-// 启动空闲旋转动画
-const startIdleRotation = () => {
-  if (idleTimer.value) return
-
-  idleTimer.value = setInterval(() => {
-    idleRotation.value = (idleRotation.value + 1) % 360
-  }, 50)
-}
-
-// 停止空闲旋转动画
-const stopIdleRotation = () => {
-  if (idleTimer.value) {
-    clearInterval(idleTimer.value)
-    idleTimer.value = null
-  }
-}
-
 // 更新指针角度
 const updatePointer = () => {
-  bearingToTarget.value = calculateBearing()
-  // 指针角度 = 目标方位角 - 设备朝向
-  pointerAngle.value = bearingToTarget.value - deviceHeading.value
-
-  // 根据是否有目标控制空闲动画
   if (hasTarget.value) {
-    stopIdleRotation()
-  } else {
-    startIdleRotation()
+    const bearing = calculateBearing()
+    pointerAngle.value = bearing - deviceHeading.value
   }
 }
 
@@ -502,11 +578,6 @@ const stopCompass = () => {
     compassTimer.value = null
   }
 
-  if (idleTimer.value) {
-    clearInterval(idleTimer.value)
-    idleTimer.value = null
-  }
-
   if (uni.stopCompass) {
     uni.stopCompass()
   }
@@ -516,12 +587,142 @@ const stopCompass = () => {
   }
 }
 
-// 到达提示
-const showArrivalModal = ref(false)
+// 开始轨迹记录
+const startTrackRecording = () => {
+  trackTimer.value = setInterval(() => {
+    if (gameStore.userLocation) {
+      const now = Math.floor(Date.now() / 1000)
+      const trackPoint: [number, number, number, number, number] = [
+        now,
+        gameStore.userLocation.longitude,
+        gameStore.userLocation.latitude,
+        0, // 速度，暂时设为0
+        deviceHeading.value
+      ]
 
-const closeArrivalModal = () => {
-  showArrivalModal.value = false
-  gameStore.targetLocation = null
+      trackHistory.value.push(trackPoint)
+
+      // 更新用户轨迹显示
+      userTrackPolyline.value.push({
+        latitude: gameStore.userLocation.latitude,
+        longitude: gameStore.userLocation.longitude
+      })
+
+      // 限制轨迹点数量，避免过多数据
+      if (trackHistory.value.length > 100) {
+        trackHistory.value.shift()
+      }
+    }
+  }, 5000) // 每5秒记录一次
+}
+
+// 调用绑路API处理轨迹
+const processTrackWithSnapRoad = async () => {
+  if (trackHistory.value.length >= 10) {
+    const snapResult = await snapToRoad(trackHistory.value)
+    if (snapResult && snapResult.track) {
+      // 更新轨迹显示
+      const smoothedPolyline = snapResult.track.map((point: any) => ({
+        latitude: point.lat,
+        longitude: point.lng
+      }))
+
+      // 替换原始轨迹为平滑后的轨迹
+      userTrackPolyline.value = smoothedPolyline
+      console.log('轨迹纠偏完成，处理了', snapResult.track.length, '个点')
+    }
+
+    // 清空历史记录，准备下一批
+    trackHistory.value = []
+  }
+}
+
+// 停止轨迹记录
+const stopTrackRecording = () => {
+  if (trackTimer.value) {
+    clearInterval(trackTimer.value)
+    trackTimer.value = null
+  }
+
+  if (snapRoadTimer.value) {
+    clearInterval(snapRoadTimer.value)
+    snapRoadTimer.value = null
+  }
+}
+
+// 加载导航路线
+const loadNavigationRoute = async () => {
+  if (!gameStore.userLocation || !gameStore.targetLocation) {
+    routeData.value = null
+    routePolyline.value = []
+    currentNavigationInstruction.value = ''
+    return
+  }
+
+  isLoadingRoute.value = true
+
+  try {
+    const route = await fetchWalkingRoute(
+      gameStore.userLocation.latitude,
+      gameStore.userLocation.longitude,
+      gameStore.targetLocation.latitude,
+      gameStore.targetLocation.longitude
+    )
+
+    if (route) {
+      routeData.value = route
+      routeDistance.value = route.routes[0]?.distance || 0
+      routeDuration.value = route.routes[0]?.duration || 0
+      currentNavigationInstruction.value = parseNavigationInstructions(route)
+
+      // 解压polyline坐标
+      if (route.routes[0]?.polyline) {
+        routePolyline.value = unzipPolyline(route.routes[0].polyline)
+        console.log('解压后的路径坐标点数:', routePolyline.value.length)
+      }
+    } else {
+      routeData.value = null
+      routePolyline.value = []
+      currentNavigationInstruction.value = '路线规划失败，请检查网络连接'
+    }
+  } finally {
+    isLoadingRoute.value = false
+  }
+}
+
+// 地图控制函数
+const toggleFollowMode = () => {
+  isFollowingUser.value = !isFollowingUser.value
+  if (isFollowingUser.value && mapContext.value) {
+    mapContext.value.moveToLocation()
+  }
+}
+
+const resetMapView = () => {
+  if (gameStore.userLocation && gameStore.targetLocation) {
+    if (mapContext.value) {
+      const lat = (gameStore.userLocation.latitude + gameStore.targetLocation.latitude) / 2
+      const lng = (gameStore.userLocation.longitude + gameStore.targetLocation.longitude) / 2
+      mapContext.value.moveToLocation({
+        latitude: lat,
+        longitude: lng
+      })
+    }
+  } else if (gameStore.userLocation && mapContext.value) {
+    mapContext.value.moveToLocation()
+  }
+}
+
+const onMapRegionChange = (e: any) => {
+  // 当用户手动拖动地图时，关闭跟随模式
+  if (e.type === 'end') {
+    isFollowingUser.value = false
+  }
+}
+
+const onMarkerTap = (e: any) => {
+  const markerId = e.detail.markerId
+  console.log('点击了标记:', markerId)
 }
 
 // 目标选择器功能
@@ -533,11 +734,10 @@ const hideTargetSelector = () => {
   showTargetModal.value = false
 }
 
-// 计算到POI的距离
 const calculateDistance = (poi: any) => {
   if (!gameStore.userLocation) return 0
 
-  const R = 6371000 // 地球半径（米）
+  const R = 6371000
   const lat1 = gameStore.userLocation.latitude * Math.PI / 180
   const lon1 = gameStore.userLocation.longitude * Math.PI / 180
   const lat2 = poi.latitude * Math.PI / 180
@@ -554,458 +754,519 @@ const calculateDistance = (poi: any) => {
   return Math.round(R * c)
 }
 
-// 检查POI是否被选中
 const isSelectedPOI = (poiId: string) => {
   return (gameStore.targetLocation as any)?.id === poiId
 }
 
-// 选择目标
 const selectTarget = async (poi: any) => {
   gameStore.setTargetLocation(poi.latitude, poi.longitude, poi.name)
-  hideTargetSelector()
+  hideTargetModal.value()
 
   uni.showToast({
     title: `已设置目标：${poi.name}`,
     icon: 'success'
   })
 
-  // 加载导航路线
+  // 清空之前的轨迹
+  trackHistory.value = []
+  userTrackPolyline.value = []
+
+  // 加载新的导航路线
   await loadNavigationRoute()
+}
+
+const hideTargetModal = () => {
+  showTargetModal.value = false
+}
+
+const closeArrivalModal = () => {
+  showArrivalModal.value = false
+  gameStore.targetLocation = null
+  routeData.value = null
+  routePolyline.value = []
+  trackHistory.value = []
+  userTrackPolyline.value = []
 }
 
 // 监听目标变化
 watch(() => gameStore.targetLocation, async () => {
   updatePointer()
-  // 当目标变化时，重新加载路线
   await loadNavigationRoute()
 })
 
-// 监听用户位置变化，重新加载路线
+// 监听用户位置变化
 watch(() => gameStore.userLocation, async () => {
   if (hasTarget.value) {
     updatePointer()
     await loadNavigationRoute()
   }
+
+  if (isFollowingUser.value && mapContext.value) {
+    mapContext.value.moveToLocation()
+  }
 })
 
-// 监听距离变化
+// 监听距离变化，检测到达
 watch(() => distanceToTarget.value, (newDistance, oldDistance) => {
   if (hasTarget.value && newDistance < 10 && oldDistance >= 10 && !showArrivalModal.value) {
     showArrivalModal.value = true
     uni.vibrateShort({
       type: 'heavy'
     })
+
+    // 到达时处理最后一次轨迹
+    processTrackWithSnapRoad()
   }
 })
 
+// 监听器：处理绑路API
+const setupSnapRoadProcessing = () => {
+  snapRoadTimer.value = setInterval(() => {
+    processTrackWithSnapRoad()
+  }, 30000) // 每30秒处理一次轨迹
+}
+
 onMounted(() => {
+  // 获取地图上下文
+  mapContext.value = uni.createMapContext('navigationMap')
+
   updatePointer()
   startCompass()
+  startTrackRecording()
+  setupSnapRoadProcessing()
+
+  // 初始加载路线
+  if (hasTarget.value) {
+    loadNavigationRoute()
+  }
 })
 
 onUnmounted(() => {
   stopCompass()
+  stopTrackRecording()
 })
 </script>
 
 <style lang="scss" scoped>
-.mystic-compass {
+.map-navigation {
   position: relative;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(180deg, #004D40 0%, #00695C 100%);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
-// 顶部目标信息栏 - 安全定位和层级
-.target-header {
-  position: absolute;
-  top: calc(var(--status-bar-height) + 44px + 30rpx);
-  left: 30rpx;
-  right: 30rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10rpx);
-  border-radius: 16rpx;
-  padding: 20rpx 30rpx;
-  border: 1rpx solid rgba(255, 215, 0, 0.2);
-  z-index: 100;
-  cursor: pointer;
-
-  .target-info {
-    .target-label {
-      color: #888;
-      font-size: 22rpx;
-      display: block;
-      margin-bottom: 4rpx;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-
-    .target-name {
-      color: #FFD700;
-      font-size: 32rpx;
-      font-weight: 600;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-  }
-
-  .target-actions {
-    display: flex;
-    align-items: center;
-    gap: 16rpx;
-
-    .target-status {
-      display: flex;
-      align-items: center;
-      gap: 8rpx;
-
-      .status-dot {
-        width: 12rpx;
-        height: 12rpx;
-        border-radius: 50%;
-        background: #4CAF50;
-        animation: statusPulse 2s infinite;
-      }
-
-      .status-text {
-        color: #4CAF50;
-        font-size: 24rpx;
-        font-family: 'SimSun', 'STSong', serif;
-      }
-    }
-
-    .selector-icon {
-      font-size: 28rpx;
-      color: #D4AF37;
-      opacity: 0.8;
-      font-weight: bold;
-    }
-  }
-}
-
-@keyframes statusPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-// 罗盘容器 - 精确居中适配
-.compass-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%); // 完全居中，与头部位置调整保持平衡
-  width: min(550rpx, 80vw); // 响应式宽度，小屏设备自动缩小
-  height: min(550rpx, 80vw); // 保持方形，响应式高度
-  max-width: 550rpx;
-  max-height: 550rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-// 同心圆环 - 玉石与金色调，响应式适配
-.compass-ring {
-  position: absolute;
-  border-radius: 50%;
-  transition: transform 0.2s linear;
-
-  &.outer-ring {
-    width: 100%;
-    height: 100%;
-    border: 3rpx solid #D4AF37;
-    opacity: 0.4;
-    box-shadow: 0 0 30rpx rgba(212, 175, 55, 0.3);
-  }
-
-  &.middle-ring {
-    width: 82%;
-    height: 82%;
-    border: 2rpx dashed #00897B;
-    opacity: 0.7;
-  }
-
-  &.inner-ring {
-    width: 64%;
-    height: 64%;
-    border: 1rpx solid #D4AF37;
-    opacity: 0.5;
-  }
-}
-
-// 方位标记 - 中文字符
-.direction-markers {
-  position: absolute;
+// 全屏地图
+.navigation-map {
   width: 100%;
   height: 100%;
-  top: 0;
-  left: 0;
-
-  .marker {
-    position: absolute;
-    color: #D4AF37;
-    font-size: 32rpx;
-    font-weight: bold;
-    font-family: 'SimSun', 'STSong', serif;
-    text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.5);
-
-    &.marker-n {
-      top: 20rpx;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-    &.marker-e {
-      right: 20rpx;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-
-    &.marker-s {
-      bottom: 20rpx;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-    &.marker-w {
-      left: 20rpx;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-  }
 }
 
-// 神秘指针 - 响应式尺寸
-.mystic-pointer {
+// 地图控制按钮
+.map-controls {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(350rpx, 60vw); // 响应式宽度
-  height: min(80rpx, 14vw);  // 响应式高度
-  transform-origin: center;
-  transition: transform 0.2s linear;
+  top: calc(var(--status-bar-height) + 120px);
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   z-index: 100;
+  pointer-events: none;
 
-  &.pointer-idle {
-    opacity: 0.6;
-  }
-
-  &.pointer-active {
-    opacity: 1;
-  }
-
-  &.pointer-searching {
-    animation: slowSpin 10s linear infinite;
-    opacity: 0.7;
-  }
-}
-
-@keyframes slowSpin {
-  from {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  to {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
-}
-
-// 玉石光晕
-.jade-glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 320rpx;
-  height: 60rpx;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(212, 175, 55, 0.2) 20%,
-    rgba(0, 137, 123, 0.3) 50%,
-    rgba(212, 175, 55, 0.2) 80%,
-    transparent 100%);
-  filter: blur(10rpx);
-  animation: jadePulse 2s infinite;
-}
-
-@keyframes jadePulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.9; }
-}
-
-// 金色箭头 - 响应式设计
-.golden-arrow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80%;
-  height: 62.5%; // 保持比例
-
-  .arrow-shaft {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 79%;
-    height: 36%;
-    background: linear-gradient(90deg,
-      transparent 0%,
-      rgba(212, 175, 55, 0.7) 20%,
-      #D4AF37 40%,
-      #FFD700 60%,
-      #D4AF37 80%,
-      transparent 100%);
-    border-radius: 50%;
-    box-shadow: 0 0 3vw rgba(212, 175, 55, 0.5);
-  }
-
-  .arrow-head {
-    position: absolute;
-    top: 50%;
-    right: 8.5%;
-    transform: translateY(-50%);
-    width: 0;
-    height: 0;
-    border-left: 7% solid #D4AF37;
-    border-top: 36% solid transparent;
-    border-bottom: 36% solid transparent;
-    filter: drop-shadow(0 0 3vw rgba(212, 175, 55, 0.8));
-  }
-}
-
-// 宝石核心 - 响应式尺寸
-.gem-core {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-
-  .inner-glow {
-    width: min(45rpx, 8vw);
-    height: min(45rpx, 8vw);
-    border-radius: 50%;
-    background: radial-gradient(circle at center,
-      rgba(0, 255, 200, 0.3) 0%,
-      rgba(212, 175, 55, 0.5) 40%,
-      transparent 100%);
-    animation: gemGlow 1.5s infinite;
-  }
-
-  .gem-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: min(20rpx, 3.5vw);
-    height: min(20rpx, 3.5vw);
-    border-radius: 50%;
-    background: radial-gradient(circle at center, #00FFC8 0%, #D4AF37 100%);
-    box-shadow: 0 0 min(25rpx, 4.5vw) rgba(0, 255, 200, 0.8);
-  }
-}
-
-@keyframes gemGlow {
-  0%, 100% { transform: scale(1); opacity: 0.7; }
-  50% { transform: scale(1.4); opacity: 1; }
-}
-
-// 底部导航HUD - 精简优雅版，避免重叠
-.navigation-hud {
-  position: absolute;
-  bottom: 50rpx;
-  bottom: calc(50rpx + env(safe-area-inset-bottom));
-  left: 50%;
-  transform: translateX(-50%);
-  width: 85%;
-  max-width: 650rpx;
-  max-height: 35vh;
-  background: rgba(0, 50, 50, 0.6);
-  backdrop-filter: blur(20rpx);
-  border-radius: 16rpx;
-  padding: 20rpx;
-  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-  border: 1rpx solid rgba(212, 175, 55, 0.4);
-  text-align: center;
-  overflow: hidden;
-
-  .distance-display {
-    margin-bottom: 16rpx;
-
-    .distance-value {
-      color: #D4AF37;
-      font-size: 48rpx;
-      font-weight: 700;
-      text-shadow: 0 0 15rpx rgba(212, 175, 55, 0.4);
-      font-family: 'SimSun', 'STSong', serif;
-    }
-
-    .distance-unit {
-      color: #D4AF37;
-      font-size: 22rpx;
-      font-weight: 500;
-      margin-left: 6rpx;
-      font-family: 'SimSun', 'STSong', serif;
-    }
-  }
-
-  .navigation-instruction {
-    margin-bottom: 16rpx;
-    padding: 12rpx 16rpx;
-    background: rgba(212, 175, 55, 0.1);
-    border-radius: 8rpx;
-    border: 1rpx solid rgba(212, 175, 55, 0.3);
-    max-height: 8vh;
-    overflow-y: auto;
-
-    .instruction-text {
-      color: #D4AF37;
-      font-size: 24rpx;
-      line-height: 1.3;
-      font-family: 'SimSun', 'STSong', serif;
-      word-wrap: break-word;
-    }
-  }
-
-  .status-info {
+  .control-btn {
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 77, 64, 0.9);
+    border: 2px solid rgba(255, 215, 0, 0.6);
+    border-radius: 22px;
     display: flex;
-    justify-content: space-around;
-    border-top: 1rpx solid rgba(212, 175, 55, 0.3);
-    padding-top: 16rpx;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+    transition: all 0.3s ease;
 
-    .info-item {
-      text-align: center;
+    &.active {
+      background: rgba(255, 215, 0, 0.9);
+      border-color: #FFD700;
+    }
 
-      .info-label {
-        color: rgba(212, 175, 55, 0.7);
-        font-size: 20rpx;
+    &:active {
+      transform: scale(0.95);
+    }
+
+    .control-icon {
+      font-size: 20px;
+    }
+  }
+}
+
+// 顶部HUD卡片
+.top-hud-card {
+  position: absolute;
+  top: calc(var(--status-bar-height) + 44px + 20px);
+  left: 20px;
+  right: 20px;
+  background: rgba(0, 77, 64, 0.85);
+  backdrop-filter: blur(15px);
+  border-radius: 16px;
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  padding: 16px 20px;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+
+  .hud-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .nav-icon {
+      width: 50px;
+      height: 50px;
+      background: rgba(255, 215, 0, 0.15);
+      border: 2px solid rgba(255, 215, 0, 0.6);
+      border-radius: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .nav-symbol {
+        font-size: 28px;
+      }
+    }
+
+    .nav-info {
+      flex: 1;
+
+      .nav-instruction {
         display: block;
-        margin-bottom: 4rpx;
-        font-family: 'SimSun', 'STSong', serif;
-      }
-
-      .info-value {
-        color: #D4AF37;
-        font-size: 28rpx;
+        color: #FFFFFF;
+        font-size: 16px;
         font-weight: 600;
-        font-family: 'SimSun', 'STSong', serif;
+        margin-bottom: 4px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       }
 
-      &.loading-indicator {
-        .info-value {
-          color: #FF9800;
-          animation: loadingPulse 1s infinite;
+      .target-name {
+        display: block;
+        color: rgba(255, 215, 0, 0.8);
+        font-size: 14px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+    }
+
+    .nav-actions {
+      .action-btn {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 215, 0, 0.2);
+        border: 1px solid rgba(255, 215, 0, 0.4);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .action-icon {
+          font-size: 18px;
         }
       }
     }
   }
 }
 
-@keyframes loadingPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+// 底部仪表盘
+.bottom-dashboard {
+  position: absolute;
+  bottom: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  left: 20px;
+  right: 20px;
+  display: flex;
+  gap: 20px;
+  z-index: 100;
+
+  // 迷你罗盘
+  .mini-compass-container {
+    width: 100px;
+    height: 100px;
+    background: rgba(0, 50, 50, 0.9);
+    backdrop-filter: blur(15px);
+    border: 2px solid rgba(255, 215, 0, 0.6);
+    border-radius: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+
+    .mini-compass {
+      position: relative;
+      width: 70px;
+      height: 70px;
+      transition: transform 0.2s linear;
+
+      .mini-ring {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border: 2px solid rgba(255, 215, 0, 0.4);
+        border-radius: 50%;
+      }
+
+      .mini-pointer {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 30px;
+        height: 4px;
+        background: linear-gradient(90deg, transparent 0%, #FFD700 50%, #FF6B6B 100%);
+        transform-origin: 0 50%;
+        transform: translate(-50%, -50%);
+        border-radius: 2px;
+
+        .mini-arrow {
+          position: absolute;
+          right: -4px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 0;
+          height: 0;
+          border-left: 8px solid #FF6B6B;
+          border-top: 6px solid transparent;
+          border-bottom: 6px solid transparent;
+        }
+      }
+
+      .mini-directions {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+
+        .mini-dir {
+          position: absolute;
+          color: #FFD700;
+          font-size: 10px;
+          font-weight: bold;
+          font-family: 'SimSun', 'STSong', serif;
+
+          &.mini-dir-n {
+            top: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+          }
+
+          &.mini-dir-e {
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+          }
+
+          &.mini-dir-s {
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+          }
+
+          &.mini-dir-w {
+            left: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+          }
+        }
+      }
+    }
+
+    .mini-compass-label {
+      color: rgba(255, 215, 0, 0.8);
+      font-size: 10px;
+      font-family: 'SimSun', 'STSong', serif;
+      margin-top: 2px;
+    }
+  }
+
+  // 数据面板
+  .data-panel {
+    flex: 1;
+    background: rgba(0, 50, 50, 0.9);
+    backdrop-filter: blur(15px);
+    border: 2px solid rgba(255, 215, 0, 0.6);
+    border-radius: 16px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+
+    .data-item {
+      text-align: center;
+
+      .data-label {
+        display: block;
+        color: rgba(255, 215, 0, 0.7);
+        font-size: 12px;
+        margin-bottom: 4px;
+        font-family: 'SimSun', 'STSong', serif;
+      }
+
+      .data-value {
+        display: block;
+        color: #FFD700;
+        font-size: 18px;
+        font-weight: bold;
+        font-family: 'SimSun', 'STSong', serif;
+      }
+    }
+  }
+}
+
+// 加载状态
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+
+  .loading-content {
+    background: rgba(0, 77, 64, 0.95);
+    border-radius: 16px;
+    padding: 30px;
+    text-align: center;
+    border: 2px solid rgba(255, 215, 0, 0.6);
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255, 215, 0, 0.2);
+      border-top: 4px solid #FFD700;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: spin 1s linear infinite;
+    }
+
+    .loading-text {
+      color: #FFD700;
+      font-size: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+// 目标选择器
+.target-selector-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+.target-selector {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 70vh;
+  background: linear-gradient(180deg, #004D40 0%, #00695C 100%);
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: slideUp 0.3s ease;
+
+  .selector-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 30px;
+
+    .selector-title {
+      color: #FFD700;
+      font-size: 32rpx;
+      font-weight: bold;
+      font-family: 'SimSun', 'STSong', serif;
+    }
+
+    .close-btn {
+      width: 50rpx;
+      height: 50rpx;
+      border-radius: 50%;
+      background: rgba(212, 175, 55, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFD700;
+      font-size: 32rpx;
+    }
+  }
+
+  .poi-list {
+    max-height: 60vh;
+    padding: 20px;
+
+    .poi-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 30px;
+      border-radius: 16px;
+      margin-bottom: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+
+      &.selected {
+        background: rgba(212, 175, 55, 0.2);
+        border-color: #FFD700;
+      }
+
+      .poi-info {
+        flex: 1;
+
+        .poi-name {
+          color: #FFD700;
+          font-size: 28rpx;
+          font-weight: bold;
+          display: block;
+          margin-bottom: 4px;
+          font-family: 'SimSun', 'STSong', serif;
+        }
+
+        .poi-distance {
+          color: rgba(212, 175, 55, 0.7);
+          font-size: 22rpx;
+          font-family: 'SimSun', 'STSong', serif;
+        }
+      }
+
+      .poi-icon {
+        font-size: 32rpx;
+        margin-left: 20px;
+      }
+    }
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 // 到达提示
@@ -1020,50 +1281,50 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(10rpx);
+  backdrop-filter: blur(10px);
 }
 
 .arrival-modal {
   background: linear-gradient(135deg, #004D40 0%, #00695C 100%);
-  border-radius: 24rpx;
-  padding: 60rpx;
+  border-radius: 24px;
+  padding: 60px;
   text-align: center;
-  border: 2rpx solid #D4AF37;
-  box-shadow: 0 0 50rpx rgba(212, 175, 55, 0.4);
+  border: 2px solid #FFD700;
+  box-shadow: 0 0 50px rgba(212, 175, 55, 0.4);
   animation: modalAppear 0.4s ease;
 
   .arrival-icon {
-    font-size: 80rpx;
-    margin-bottom: 30rpx;
+    font-size: 80px;
+    margin-bottom: 30px;
     display: block;
     animation: iconBounce 0.6s ease;
   }
 
   .arrival-title {
-    color: #D4AF37;
-    font-size: 36rpx;
+    color: #FFD700;
+    font-size: 36px;
     font-weight: 700;
     display: block;
-    margin-bottom: 15rpx;
+    margin-bottom: 15px;
     font-family: 'SimSun', 'STSong', serif;
   }
 
   .arrival-subtitle {
-    color: #D4AF37;
-    font-size: 28rpx;
+    color: #FFD700;
+    font-size: 28px;
     opacity: 0.8;
     display: block;
-    margin-bottom: 40rpx;
+    margin-bottom: 40px;
     font-family: 'SimSun', 'STSong', serif;
   }
 
   .arrival-btn {
-    background: linear-gradient(135deg, #D4AF37 0%, #00897B 100%);
+    background: linear-gradient(135deg, #FFD700 0%, #00897B 100%);
     color: #004D40;
     border: none;
-    border-radius: 25rpx;
-    padding: 20rpx 60rpx;
-    font-size: 28rpx;
+    border-radius: 25px;
+    padding: 20px 60px;
+    font-size: 28px;
     font-weight: 600;
     font-family: 'SimSun', 'STSong', serif;
   }
@@ -1084,175 +1345,5 @@ onUnmounted(() => {
   0% { transform: scale(0.3); }
   50% { transform: scale(1.2); }
   100% { transform: scale(1); }
-}
-
-// 目标选择器
-.target-selector-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(10rpx);
-}
-
-.target-selector {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-height: 70vh;
-  background: linear-gradient(180deg, #004D40 0%, #00695C 100%);
-  border-radius: 24rpx 24rpx 0 0;
-  padding: 0;
-  padding-bottom: env(safe-area-inset-bottom); // 适配iPhone X+的Home Indicator
-  animation: slideUp 0.3s ease;
-
-  .selector-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 30rpx;
-    border-bottom: 1rpx solid rgba(212, 175, 55, 0.3);
-
-    .selector-title {
-      color: #D4AF37;
-      font-size: 32rpx;
-      font-weight: bold;
-      font-family: 'SimSun', 'STSong', serif;
-    }
-
-    .close-btn {
-      width: 50rpx;
-      height: 50rpx;
-      border-radius: 50%;
-      background: rgba(212, 175, 55, 0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #D4AF37;
-      font-size: 32rpx;
-      cursor: pointer;
-
-      &:active {
-        background: rgba(212, 175, 55, 0.3);
-      }
-    }
-  }
-
-  .poi-list {
-    max-height: 60vh;
-    padding: 20rpx;
-
-    .poi-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 20rpx 30rpx;
-      border-radius: 16rpx;
-      margin-bottom: 10rpx;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1rpx solid rgba(212, 175, 55, 0.2);
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      &:active {
-        background: rgba(212, 175, 55, 0.1);
-        transform: translateX(10rpx);
-      }
-
-      &.selected {
-        background: rgba(212, 175, 55, 0.2);
-        border-color: #D4AF37;
-      }
-
-      .poi-info {
-        flex: 1;
-
-        .poi-name {
-          color: #D4AF37;
-          font-size: 28rpx;
-          font-weight: bold;
-          display: block;
-          margin-bottom: 4rpx;
-          font-family: 'SimSun', 'STSong', serif;
-        }
-
-        .poi-distance {
-          color: rgba(212, 175, 55, 0.7);
-          font-size: 22rpx;
-          font-family: 'SimSun', 'STSong', serif;
-        }
-      }
-
-      .poi-icon {
-        font-size: 32rpx;
-        margin-left: 20rpx;
-      }
-    }
-  }
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-// 响应式媒体查询
-@media screen and (max-width: 375px) {
-  // iPhone SE 等小屏设备
-  .target-header {
-    padding: 16rpx 24rpx;
-
-    .target-name {
-      font-size: 28rpx;
-    }
-  }
-
-  .navigation-hud {
-    width: 90%;
-    padding: 16rpx;
-
-    .distance-value {
-      font-size: 42rpx;
-    }
-
-    .instruction-text {
-      font-size: 22rpx;
-    }
-
-    .info-value {
-      font-size: 24rpx;
-    }
-  }
-}
-
-@media screen and (min-width: 768px) {
-  // 大屏设备优化
-  .compass-container {
-    width: 500rpx;
-    height: 500rpx;
-  }
-
-  .navigation-hud {
-    max-width: 600rpx;
-  }
-}
-
-// 超宽屏优化
-@media screen and (min-width: 1024px) {
-  .mystic-compass {
-    max-width: 750rpx;
-    margin: 0 auto;
-  }
 }
 </style>
