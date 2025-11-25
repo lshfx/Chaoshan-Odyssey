@@ -547,12 +547,14 @@ const throttledUpdateUI = () => {
   }
 }
 
-// 更新指针角度 - 修正为兄弟节点架构逻辑
+// 更新指针角度 - 修正兄弟节点架构算法
 const updatePointer = () => {
   if (hasTarget.value) {
     const bearing = calculateBearing()
-    // 兄弟节点架构：指针直接指向目标的绝对角度
-    pointerAngle.value = bearing
+    // 修正：指针必须减去设备朝向，才能在屏幕上指向正确的相对方向
+    // 这样它才能和"逆向旋转"的刻度盘对齐
+    const relativeAngle = ((bearing - deviceHeading.value) + 360) % 360
+    pointerAngle.value = relativeAngle
   } else {
     // 无目标时指针归零（指向用户正前方）
     pointerAngle.value = 0
@@ -1252,16 +1254,19 @@ onUnmounted(() => {
   .poi-list {
     max-height: 60vh;
     padding: 20px;
+    overflow-y: auto;
 
     .poi-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 20px 30px;
+      padding: 20px;
       border-radius: 16px;
       margin-bottom: 10px;
       background: rgba(0, 0, 0, 0.3);
       border: 1px solid rgba(212, 175, 55, 0.2);
+      width: 100%;
+      box-sizing: border-box;
 
       &.selected {
         background: rgba(212, 175, 55, 0.2);
@@ -1270,6 +1275,8 @@ onUnmounted(() => {
 
       .poi-info {
         flex: 1;
+        min-width: 0; // 允许内容收缩
+        margin-right: 12px;
 
         .poi-name {
           color: #FFD700;
@@ -1278,6 +1285,9 @@ onUnmounted(() => {
           display: block;
           margin-bottom: 4px;
           font-family: 'SimSun', 'STSong', serif;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .poi-distance {
@@ -1289,7 +1299,8 @@ onUnmounted(() => {
 
       .poi-icon {
         font-size: 32rpx;
-        margin-left: 20px;
+        flex-shrink: 0; // 防止图标被压缩
+        margin-left: 8px;
       }
     }
   }
