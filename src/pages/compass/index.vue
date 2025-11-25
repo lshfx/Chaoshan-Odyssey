@@ -169,6 +169,12 @@ const deviceHeading = ref(0)
 const pointerAngle = ref(0)
 const compassTimer = ref<any>(null)
 
+// 罗盘数据平滑处理
+const rawHeading = ref(0) // 原始磁力计数据
+const smoothHeading = ref(0) // 平滑后的显示数据
+const lastUpdateTime = ref(0) // 节流控制
+const compassUpdateInterval = 100 // 节流间隔：100ms
+
 // 导航数据
 const routeData = ref<any>(null)
 const routePolyline = ref<any[]>([])
@@ -529,6 +535,43 @@ const calculateBearing = () => {
   return bearing
 }
 
+// 罗盘数据平滑处理函数
+const smoothCompassData = (targetHeading: number) => {
+  // 解决 0度 <-> 360度 旋转突变问题
+  let adjustedTarget = targetHeading
+  const currentDisplay = smoothHeading.value
+
+  if (Math.abs(adjustedTarget - currentDisplay) > 180) {
+    if (adjustedTarget > currentDisplay) {
+      adjustedTarget -= 360
+    } else {
+      adjustedTarget += 360
+    }
+  }
+
+  // 线性插值 (Lerp factor = 0.15)
+  // 指针会"追"着真实值跑，过滤掉高频抖动
+  const lerpFactor = 0.15
+  smoothHeading.value += (adjustedTarget - smoothHeading.value) * lerpFactor
+
+  // 归一化到 0-360 范围
+  return (smoothHeading.value + 360) % 360
+}
+
+// 节流更新UI
+const throttledUpdateUI = () => {
+  const now = Date.now()
+  if (now - lastUpdateTime.value >= compassUpdateInterval) {
+    lastUpdateTime.value = now
+
+    // 应用平滑数据到UI显示
+    deviceHeading.value = Math.round(smoothHeading.value)
+
+    // 更新指针角度
+    updatePointer()
+  }
+}
+
 // 更新指针角度
 const updatePointer = () => {
   if (hasTarget.value) {
@@ -546,13 +589,20 @@ const startCompass = () => {
   }
 
   uni.onCompassChange((res) => {
-    deviceHeading.value = Math.round(res.direction)
-    updatePointer()
+    // 获取原始磁力计数据
+    const newRawHeading = Math.round(res.direction)
+    rawHeading.value = newRawHeading
+
+    // 应用平滑处理
+    const smoothedValue = smoothCompassData(newRawHeading)
+
+    // 节流更新UI
+    throttledUpdateUI()
   })
 
   uni.startCompass({
     success: () => {
-      console.log('罗盘启动成功')
+      console.log('罗盘启动成功，启用平滑处理')
     },
     fail: (err) => {
       console.error('罗盘启动失败:', err)
@@ -566,9 +616,14 @@ const simulateCompass = () => {
   let angle = 0
   compassTimer.value = setInterval(() => {
     angle = (angle + 2) % 360
-    deviceHeading.value = angle
-    updatePointer()
-  }, 100)
+    rawHeading.value = angle
+
+    // 对模拟数据也应用平滑处理
+    const smoothedValue = smoothCompassData(angle)
+
+    // 节流更新UI
+    throttledUpdateUI()
+  }, 50) // 模拟器高频数据，用于测试平滑效果
 }
 
 // 停止罗盘监听
@@ -830,10 +885,16 @@ onMounted(() => {
   // 获取地图上下文
   mapContext.value = uni.createMapContext('navigationMap')
 
+  // 初始化平滑处理状态
+  smoothHeading.value = deviceHeading.value
+  lastUpdateTime.value = Date.now()
+
   updatePointer()
   startCompass()
   startTrackRecording()
   setupSnapRoadProcessing()
+
+  console.log('罗盘平滑处理已启用，Lerp factor: 0.15, 节流间隔: 100ms')
 
   // 初始加载路线
   if (hasTarget.value) {
