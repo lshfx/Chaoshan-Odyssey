@@ -71,18 +71,23 @@
     <view class="bottom-dashboard">
       <!-- 迷你罗盘 -->
       <view class="mini-compass-container">
-        <view class="mini-compass" :style="{ transform: `rotate(${deviceHeading}deg)` }">
-          <view class="mini-ring"></view>
-          <view class="mini-pointer" :style="{ transform: `rotate(${pointerAngle}deg)` }">
-            <view class="mini-arrow"></view>
-          </view>
-          <view class="mini-directions">
-            <text class="mini-dir mini-dir-n">N</text>
-            <text class="mini-dir mini-dir-e">E</text>
-            <text class="mini-dir mini-dir-s">S</text>
-            <text class="mini-dir mini-dir-w">W</text>
+        <!-- 刻度盘容器 -->
+        <view class="mini-dial" :style="{ transform: `rotate(${-deviceHeading}deg)` }">
+          <view class="dial-ring"></view>
+          <view class="dial-directions">
+            <text class="dial-label dial-n">N</text>
+            <text class="dial-label dial-e">E</text>
+            <text class="dial-label dial-s">S</text>
+            <text class="dial-label dial-w">W</text>
           </view>
         </view>
+
+        <!-- 指针容器 (兄弟节点，避免嵌套旋转叠加) -->
+        <view class="mini-pointer" :style="{ transform: `rotate(${pointerAngle}deg)` }">
+          <view class="pointer-arrow"></view>
+          <view class="pointer-center"></view>
+        </view>
+
         <text class="mini-compass-label">方位</text>
       </view>
 
@@ -501,18 +506,20 @@ const getNavigationSymbol = () => {
   if (distance < 50) return '📍'
   if (distance < 200) return '🚶'
 
-  // 根据朝向判断方向
+  // HUD显示相对方位：目标在我的哪个方向
+  // 必须使用相对计算：目标方位角 - 设备朝向
   const bearing = calculateBearing()
-  const normalizedAngle = ((bearing - deviceHeading.value) + 360) % 360
+  const relativeAngle = ((bearing - deviceHeading.value) + 360) % 360
 
-  if (normalizedAngle >= 337.5 || normalizedAngle < 22.5) return '⬆️'
-  if (normalizedAngle >= 22.5 && normalizedAngle < 67.5) return '↗️'
-  if (normalizedAngle >= 67.5 && normalizedAngle < 112.5) return '➡️'
-  if (normalizedAngle >= 112.5 && normalizedAngle < 157.5) return '↘️'
-  if (normalizedAngle >= 157.5 && normalizedAngle < 202.5) return '⬇️'
-  if (normalizedAngle >= 202.5 && normalizedAngle < 247.5) return '↙️'
-  if (normalizedAngle >= 247.5 && normalizedAngle < 292.5) return '⬅️'
-  return '↖️'
+  // 0度代表"正前方"
+  if (relativeAngle >= 337.5 || relativeAngle < 22.5) return '⬆️' // 正前方
+  if (relativeAngle >= 22.5 && relativeAngle < 67.5) return '↗️' // 右前方
+  if (relativeAngle >= 67.5 && relativeAngle < 112.5) return '➡️' // 正右方
+  if (relativeAngle >= 112.5 && relativeAngle < 157.5) return '↘️' // 右后方
+  if (relativeAngle >= 157.5 && relativeAngle < 202.5) return '⬇️' // 正后方
+  if (relativeAngle >= 202.5 && relativeAngle < 247.5) return '↙️' // 左后方
+  if (relativeAngle >= 247.5 && relativeAngle < 292.5) return '⬅️' // 正左方
+  return '↖️' // 左前方
 }
 
 // 计算方位角
@@ -576,7 +583,12 @@ const throttledUpdateUI = () => {
 const updatePointer = () => {
   if (hasTarget.value) {
     const bearing = calculateBearing()
-    pointerAngle.value = bearing - deviceHeading.value
+    // 指针现在是兄弟节点且默认指向上方(0度=北方)
+    // 直接使用绝对方位角即可
+    pointerAngle.value = bearing
+  } else {
+    // 无目标时指针归零（指向北方）
+    pointerAngle.value = 0
   }
 }
 
@@ -894,7 +906,9 @@ onMounted(() => {
   startTrackRecording()
   setupSnapRoadProcessing()
 
-  console.log('罗盘平滑处理已启用，Lerp factor: 0.15, 节流间隔: 100ms')
+  // 简化初始化日志（只输出一次）
+  console.log('🧭 罗盘导航系统启动 - 兄弟节点架构，0°=北方')
+  console.log(`📍 初始状态: 朝向=${deviceHeading.value}°, 指针=${pointerAngle.value}°`)
 
   // 初始加载路线
   if (hasTarget.value) {
@@ -1059,13 +1073,17 @@ onUnmounted(() => {
     justify-content: center;
     position: relative;
 
-    .mini-compass {
-      position: relative;
+    // 刻度盘容器
+    .mini-dial {
+      position: absolute;
+      top: 50%;
+      left: 50%;
       width: 70px;
       height: 70px;
+      transform: translate(-50%, -50%);
       transition: transform 0.2s linear;
 
-      .mini-ring {
+      .dial-ring {
         position: absolute;
         width: 100%;
         height: 100%;
@@ -1073,66 +1091,78 @@ onUnmounted(() => {
         border-radius: 50%;
       }
 
-      .mini-pointer {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 30px;
-        height: 4px;
-        background: linear-gradient(90deg, transparent 0%, #FFD700 50%, #FF6B6B 100%);
-        transform-origin: 0 50%;
-        transform: translate(-50%, -50%);
-        border-radius: 2px;
-
-        .mini-arrow {
-          position: absolute;
-          right: -4px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 0;
-          height: 0;
-          border-left: 8px solid #FF6B6B;
-          border-top: 6px solid transparent;
-          border-bottom: 6px solid transparent;
-        }
-      }
-
-      .mini-directions {
+      .dial-directions {
         position: absolute;
         width: 100%;
         height: 100%;
 
-        .mini-dir {
+        .dial-label {
           position: absolute;
           color: #FFD700;
           font-size: 10px;
           font-weight: bold;
           font-family: 'SimSun', 'STSong', serif;
 
-          &.mini-dir-n {
+          &.dial-n {
             top: 2px;
             left: 50%;
             transform: translateX(-50%);
           }
 
-          &.mini-dir-e {
+          &.dial-e {
             right: 2px;
             top: 50%;
             transform: translateY(-50%);
           }
 
-          &.mini-dir-s {
+          &.dial-s {
             bottom: 2px;
             left: 50%;
             transform: translateX(-50%);
           }
 
-          &.mini-dir-w {
+          &.dial-w {
             left: 2px;
             top: 50%;
             transform: translateY(-50%);
           }
         }
+      }
+    }
+
+    // 指针容器 (兄弟节点)
+    .mini-pointer {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 35px;
+      height: 35px;
+      transform: translate(-50%, -50%);
+      transition: transform 0.2s linear;
+
+      .pointer-arrow {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 0;
+        height: 0;
+        transform: translateX(-50%);
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-bottom: 20px solid #FF6B6B;
+        filter: drop-shadow(0 2px 4px rgba(255, 107, 107, 0.3));
+      }
+
+      .pointer-center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 8px;
+        height: 8px;
+        background: radial-gradient(circle, #FFD700 0%, #FF6B6B 100%);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
       }
     }
 
