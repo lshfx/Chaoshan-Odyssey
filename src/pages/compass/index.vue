@@ -602,6 +602,20 @@ const startCompass = () => {
     return
   }
 
+  // 先停止现有罗盘监听，避免重复启动错误
+  uni.stopCompass({
+    complete: () => {
+      console.log('已停止现有罗盘监听')
+      // 延迟启动，确保完全停止
+      setTimeout(() => {
+        startCompassListening()
+      }, 200)
+    }
+  })
+}
+
+// 实际启动罗盘监听的函数
+const startCompassListening = () => {
   uni.onCompassChange((res) => {
     // 获取原始磁力计数据
     const newRawHeading = Math.round(res.direction)
@@ -620,7 +634,12 @@ const startCompass = () => {
     },
     fail: (err) => {
       console.error('罗盘启动失败:', err)
-      simulateCompass()
+      // 如果已经启动，直接监听
+      if (err.errMsg?.includes('has enable')) {
+        console.log('罗盘已经启动，开始监听变化')
+      } else {
+        simulateCompass()
+      }
     }
   })
 }
