@@ -107,6 +107,9 @@ import { useMapNavigation } from '@/composables/useMapNavigation'
 const gameStore = useGameStore()
 const navigation = useMapNavigation()
 
+// 解构出模板需要的属性，Vue 3 会自动解包这些 computed ref
+const { formatDistance, formatDuration, isLoadingRoute } = navigation
+
 // 地图状态
 const mapScale = ref(16)
 const isFollowingUser = ref(true)
@@ -153,7 +156,7 @@ const mapMarkers = computed(() => {
   // 用户位置标记
   if (gameStore.userLocation) {
     markers.push({
-      id: 'user_location',
+      id: 1, // 数字ID，符合UniApp要求
       latitude: gameStore.userLocation.latitude,
       longitude: gameStore.userLocation.longitude,
       iconPath: '/static/my-location.png',
@@ -167,7 +170,7 @@ const mapMarkers = computed(() => {
   // 目标位置标记
   if (gameStore.targetLocation) {
     markers.push({
-      id: 'target_location',
+      id: 2, // 数字ID，符合UniApp要求
       latitude: gameStore.targetLocation.latitude,
       longitude: gameStore.targetLocation.longitude,
       iconPath: '/static/markers/mission-marker.png',

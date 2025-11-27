@@ -109,7 +109,7 @@
   import { onLoad } from '@dcloudio/uni-app'
   import { useGameStore } from '../../stores/useGameStore'
   import { gameData } from '../../mock/gameData'
-  import CustomNavbar from '@/components/CustomNavbar.vue'
+    import CustomNavbar from '@/components/CustomNavbar.vue'
   import InventoryModal from '@/components/InventoryModal.vue'
   import StoryDialogue from '@/components/StoryDialogue.vue'
   import LocationController from '@/components/LocationController.vue'
