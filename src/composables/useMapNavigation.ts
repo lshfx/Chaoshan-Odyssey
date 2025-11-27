@@ -17,6 +17,13 @@ export interface POI {
   icon?: string
 }
 
+// 腾讯地图API响应接口
+interface TencentMapResponse {
+  status: number;
+  message: string;
+  result: RouteData;
+}
+
 export interface RouteData {
   routes: Array<{
     distance: number
@@ -68,7 +75,8 @@ export function useMapNavigation() {
 
   // 腾讯地图步行路线规划API
   const fetchWalkingRoute = async (fromLat: number, fromLng: number, toLat: number, toLng: number) => {
-    if (TENCENT_MAP_KEY === 'YOUR_KEY_HERE') {
+    // 检查API密钥是否已配置
+    if (TENCENT_MAP_KEY === 'YOUR_KEY_HERE' || !TENCENT_MAP_KEY) {
       console.warn('腾讯地图API密钥未配置，使用模拟导航')
       return null
     }
@@ -92,7 +100,7 @@ export function useMapNavigation() {
       })
 
       if (response.statusCode === 200 && typeof response.data === 'object' && response.data.status === 0) {
-        return response.data.result
+        return response.data.result as RouteData
       } else {
         console.error('腾讯地图API调用失败:', response.data)
         return null
