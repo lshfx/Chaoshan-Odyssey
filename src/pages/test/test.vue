@@ -6,6 +6,8 @@
       <button class="test-btn" @tap="startNarratorDialogue">旁白测试</button>
       <button class="test-btn" @tap="startMixedDialogue">混合剧情测试</button>
       <button class="test-btn" @tap="startTaskDialogue">任务功能测试</button>
+      <button class="test-btn" @tap="startInteractiveNarrative">Phase 6 交互叙事测试</button>
+      <button class="test-btn" @tap="startEndingTest">结局画面测试</button>
     </view>
 
     <!-- 对话组件 -->
@@ -195,6 +197,31 @@ const taskDialogueScript = [
   }
 ]
 
+// 结局测试剧本
+const endingTestScript = [
+  {
+    id: 'ending_narrator_1',
+    speakerType: 'narrator' as const,
+    name: '旁白',
+    content: '随着真相大白，你的旅途也迎来了终点...'
+  },
+  {
+    id: 'ending_node',
+    speakerType: 'narrator' as const,
+    name: '旁白',
+    ending: {
+      id: 'test_ending_perfect',
+      characterId: 'chen_linger',
+      type: 'perfect',
+      title: '云开月明',
+      achievement: '家族守护者',
+      description: '蔡福生被当场拿获，那一包还没来得及销毁的迷药和藏在暗格里的《护卫日志》完好无损。',
+      background: '你翻开日志，看到父亲的笔迹："吾儿，父母未死，隐于南洋。"三个月后，你辞去捕快之职，登上了去往南洋的红头船，与家人团聚。',
+      imageUrl: '/static/locations/confucian_temple_bg.jpg'
+    }
+  }
+]
+
 // 测试方法
 const startNPCDialogue = () => {
   currentScript.value = npcDialogueScript
@@ -225,6 +252,110 @@ const startTaskDialogue = () => {
   currentBgImage.value = '/static/locations/confucian_temple_bg.jpg'
   dialogueVisible.value = true
 }
+
+const startInteractiveNarrative = () => {
+  currentScript.value = interactiveNarrativeScript
+  currentBgImage.value = '/static/locations/confucian_temple_bg.jpg'
+  dialogueVisible.value = true
+}
+
+const startEndingTest = () => {
+  currentScript.value = endingTestScript
+  currentBgImage.value = '/static/locations/confucian_temple_bg.jpg'
+  dialogueVisible.value = true
+}
+
+// Phase 6 交互式叙事脚本示例
+const interactiveNarrativeScript: any[] = [
+  {
+    id: 'lin_wenyuan_welcome_interactive',
+    type: 'normal',
+    speakerType: 'npc',
+    name: '林文渊',
+    avatar: '/static/npcs/lin_wenyuan.png',
+    content: '（林文渊正在整理古籍，看到你走近）年轻人，我看你气质不凡，来此有何贵干？',
+  },
+  {
+    id: 'lin_wenyuan_choice_interactive',
+    type: 'choice',
+    speakerType: 'npc',
+    name: '林文渊',
+    avatar: '/static/npcs/lin_wenyuan.png',
+    content: '作为揭阳学宫的讲学者，我可以为你解答关于儒学文脉的疑问。',
+    options: [
+      { label: '我想了解揭阳学宫的历史', value: 'history_path' },
+      { label: '我想学习儒学经典', value: 'classics_path' },
+      { label: '我想直接挑战印章', value: 'seal_path' }
+    ]
+  },
+  {
+    id: 'lin_wenyuan_history_explain',
+    type: 'normal',
+    speakerType: 'npc',
+    name: '林文渊',
+    avatar: '/static/npcs/lin_wenyuan.png',
+    content: '揭阳学宫始建于北宋庆历年间，至今已有近千年历史。这里曾是粤东地区的最高学府，培养了无数人才。',
+  },
+  {
+    id: 'lin_wenyuan_history_question',
+    type: 'task',
+    speakerType: 'task',
+    name: '历史知识测试',
+    task: {
+      type: 'question',
+      description: '揭阳学宫始建于哪个朝代？',
+      options: ['唐朝', '宋朝', '明朝', '清朝'],
+      correctOption: 1 // '宋朝' 的索引
+    }
+  },
+  {
+    id: 'lin_wenyuan_history_correct',
+    type: 'normal',
+    speakerType: 'npc',
+    name: '林文渊',
+    avatar: '/static/npcs/lin_wenyuan.png',
+    content: '非常好！你对揭阳历史文化确实有了解。既然你这么用心，我愿意传授你一些儒学礼仪知识。',
+  },
+  {
+    id: 'lin_wenyuan_classics_teach',
+    type: 'normal',
+    speakerType: 'npc',
+    name: '林文渊',
+    avatar: '/static/npcs/lin_wenyuan.png',
+    content: '（林文渊从书架上取下一本《论语》）"学而时习之，不亦说乎？"学习儒家经典，最重要的是要懂得实践。',
+  },
+  {
+    id: 'lin_wenyuan_etiquette_task',
+    type: 'task',
+    speakerType: 'task',
+    name: '礼仪学习',
+    task: {
+      type: 'question',
+      description: '儒家最基础的礼仪是什么？',
+      options: ['揖礼', '鞠躬', '抱拳', '作揖'],
+      correctOption: 0 // '揖礼' 的索引
+    }
+  },
+  {
+    id: 'lin_wenyuan_ritual_task',
+    type: 'task',
+    speakerType: 'task',
+    name: '礼仪实践',
+    task: {
+      type: 'action',
+      description: '请向孔子像行揖礼，表达对先贤的敬意',
+      actionText: '行揖礼'
+    }
+  },
+  {
+    id: 'lin_wenyuan_seal_earned',
+    type: 'normal',
+    speakerType: 'npc',
+    name: '林文渊',
+    avatar: '/static/npcs/lin_wenyuan.png',
+    content: '恭喜你！你通过了所有考验，获得了儒学文脉印章。记住，这枚印章不仅是文脉的象征，更是传承的责任。',
+  }
+]
 
 // 事件处理
 const handleOptionSelected = (option: any) => {
