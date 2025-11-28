@@ -5,6 +5,7 @@
       <button class="test-btn" @tap="startPlayerDialogue">玩家对话测试</button>
       <button class="test-btn" @tap="startNarratorDialogue">旁白测试</button>
       <button class="test-btn" @tap="startMixedDialogue">混合剧情测试</button>
+      <button class="test-btn" @tap="startTaskDialogue">任务功能测试</button>
     </view>
 
     <!-- 对话组件 -->
@@ -119,6 +120,81 @@ const mixedDialogueScript = [
   }
 ]
 
+const taskDialogueScript = [
+  {
+    id: 'task_1',
+    speakerType: 'narrator' as const,
+    name: '旁白',
+    content: '在揭阳学宫的大成殿前，林文渊要考验你对传统文化的理解...'
+  },
+  {
+    id: 'task_2',
+    speakerType: 'npc' as const,
+    name: '林文渊',
+    avatar: '/static/npcs/lin_wenyuan.png',
+    content: '年轻人，让我们先来一个简单的数学题热热身。'
+  },
+  {
+    id: 'task_3',
+    speakerType: 'task' as const,
+    name: '数学题',
+    task: {
+      type: 'question',
+      description: '请问：1 + 1 = ?',
+      options: ['1', '2', '3', '4'],
+      correctOption: 1 // 索引1，即'2'
+    }
+  },
+  {
+    id: 'task_4',
+    speakerType: 'npc' as const,
+    name: '林文渊',
+    avatar: '/static/npcs/lin_wenyuan.png',
+    content: '很好！现在让我们来一个更有文化内涵的问题。'
+  },
+  {
+    id: 'task_5',
+    speakerType: 'task' as const,
+    name: '文化题',
+    task: {
+      type: 'question',
+      description: '揭阳学宫始建于哪个朝代？',
+      options: ['唐朝', '宋朝', '明朝', '清朝'],
+      correctOption: 2 // 索引2，即'明朝'
+    }
+  },
+  {
+    id: 'task_6',
+    speakerType: 'npc' as const,
+    name: '林文渊',
+    avatar: '/static/npcs/lin_wenyuan.png',
+    content: '知识储备不错！现在请表现出你对传统文化的尊重。'
+  },
+  {
+    id: 'task_7',
+    speakerType: 'task' as const,
+    name: '礼仪动作',
+    task: {
+      type: 'action',
+      description: '请向孔子像行揖礼，表达对传统文化的敬意',
+      actionText: '行揖礼'
+    }
+  },
+  {
+    id: 'task_8',
+    speakerType: 'npc' as const,
+    name: '林文渊',
+    avatar: '/static/npcs/lin_wenyuan.png',
+    content: '很好！你已经证明了你对传统文化的理解和尊重。这枚儒学文脉印章，你当之无愧！'
+  },
+  {
+    id: 'task_9',
+    speakerType: 'narrator' as const,
+    name: '旁白',
+    content: '恭喜你成功完成了所有考验，获得了第一枚印章！接下来的旅程还充满挑战...'
+  }
+]
+
 // 测试方法
 const startNPCDialogue = () => {
   currentScript.value = npcDialogueScript
@@ -140,6 +216,12 @@ const startNarratorDialogue = () => {
 
 const startMixedDialogue = () => {
   currentScript.value = mixedDialogueScript
+  currentBgImage.value = '/static/locations/confucian_temple_bg.jpg'
+  dialogueVisible.value = true
+}
+
+const startTaskDialogue = () => {
+  currentScript.value = taskDialogueScript
   currentBgImage.value = '/static/locations/confucian_temple_bg.jpg'
   dialogueVisible.value = true
 }
