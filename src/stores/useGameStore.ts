@@ -2,6 +2,9 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { gameData, type Character, type POI, type Seal, type Clue, type Item } from '../mock/gameData'
 
+// [NEW] Define Stat Types
+export type StatType = 'courage' | 'clue' | 'intimacy'
+
 export const useGameStore = defineStore('game', () => {
   // ============ State ============
   const currentCity = ref('jieyang')
@@ -53,6 +56,18 @@ export const useGameStore = defineStore('game', () => {
   const completedPoiIds = ref<string[]>([]) // 当前已完成的地点ID列表
   const currentScript = ref<any[]>([]) // 当前正在播放的对话脚本
   const isDialogueVisible = ref(false) // 控制对话组件显示
+
+  // --- Phase 6: Interactive Narrative State ---
+
+  // 1. Player Hidden Stats
+  const playerStats = ref({
+    courage: 0,  // 果敢度
+    clue: 0,     // 线索值
+    intimacy: 0  // 亲密度
+  })
+
+  // 2. Story History (Choice IDs)
+  const storyHistory = ref<string[]>([])
 
   // ============ Getters ============
 
@@ -591,6 +606,74 @@ export const useGameStore = defineStore('game', () => {
     console.log('对话结束，当前剧情阶段:', storyStage.value)
   }
 
+  // --- Phase 6: Interactive Narrative Actions ---
+
+  // Update Stats
+  const updateStat = (type: StatType, value: number) => {
+    if (Object.prototype.hasOwnProperty.call(playerStats.value, type)) {
+      playerStats.value[type as keyof typeof playerStats.value] += value
+      console.log(`[Stats Update] ${type}: ${playerStats.value[type as keyof typeof playerStats.value]} (Change: ${value})`)
+    }
+  }
+
+  // Record Choice
+  const recordChoice = (choiceId: string) => {
+    if (!storyHistory.value.includes(choiceId)) {
+      storyHistory.value.push(choiceId)
+      console.log(`[History] Recorded choice: ${choiceId}`)
+    }
+  }
+
+  // Check Conditions (e.g., { courage: 1 } -> true if courage >= 1)
+  const checkCondition = (conditions: Partial<typeof playerStats.value>): boolean => {
+    for (const key in conditions) {
+      const k = key as keyof typeof playerStats.value
+      if (playerStats.value[k] < (conditions[k] || 0)) {
+        return false
+      }
+    }
+    return true
+  }
+
+  // Reset State (For testing)
+  const resetStoryState = () => {
+    playerStats.value = { courage: 0, clue: 0, intimacy: 0 }
+    storyHistory.value = []
+  }
+
+  // 结局判定系统
+  const checkEnding = (): string => {
+    const { courage, clue, intimacy } = playerStats.value
+    console.log('Calculating Ending with stats:', playerStats.value)
+
+    // 优先级 1: 悲剧结局（亲密度太低或果敢度不足）
+    if (intimacy < 0 || courage < 0) {
+      return 'ending_bad' // 雨夜孤影
+    }
+
+    // 优先级 2: 完美结局（需要高线索值和果敢度）
+    if (clue >= 2 && courage >= 1) {
+      return 'ending_perfect' // 云开月明
+    }
+
+    // 默认：普通结局（古诚守夜人）
+    return 'ending_normal' // 古城守夜人
+  }
+
+  // 任务状态检查（普通NPC任务用）
+  const checkMissionStatus = (npcId: string): string => {
+    console.log(`[任务状态检查] NPC: ${npcId}`)
+
+    // 记录任务进度
+    if (!missionStatus.value.completedTasks.includes(npcId)) {
+      missionStatus.value.completedTasks.push(npcId)
+      console.log(`[任务完成] ${npcId}`)
+    }
+
+    // 普通任务完成，返回成功状态
+    return 'success'
+  }
+
   // 计算与目标的距离（米）
   const getDistanceToTarget = computed(() => {
     if (!targetLocation.value) return 0
@@ -622,6 +705,10 @@ export const useGameStore = defineStore('game', () => {
     completedPoiIds,
     currentScript,
     isDialogueVisible,
+
+    // [NEW] Interactive Narrative State
+    playerStats,
+    storyHistory,
 
     // Getters
     currentCityData,
@@ -660,6 +747,14 @@ export const useGameStore = defineStore('game', () => {
     setTargetLocation,
     startStory,
     unlockLocation,
-    handleDialogueEnd
+    handleDialogueEnd,
+
+    // [NEW] Interactive Narrative Actions
+    updateStat,
+    recordChoice,
+    checkCondition,
+    resetStoryState,
+    checkEnding,
+    checkMissionStatus
   }
 })

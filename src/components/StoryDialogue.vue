@@ -21,6 +21,13 @@
       @complete="handleTaskComplete"
     />
 
+    <!-- 结局卡片 - 当是结局节点时显示 -->
+    <EndingCard
+      v-if="isEndingNode && currentLine?.ending"
+      :ending="currentLine.ending"
+      @close="handleEndingClose"
+    />
+
     <!-- 选项层 - 当有选项时显示 -->
     <ChoicePanel
       v-if="currentLine?.options && currentLine.options.length > 0"
@@ -51,6 +58,8 @@ import { ref, computed, watch } from 'vue'
 import DialogueBox from './story/DialogueBox.vue'
 import ChoicePanel from './story/ChoicePanel.vue'
 import TaskPanel from './story/TaskPanel.vue'
+import EndingCard from './story/EndingCard.vue'
+import type { StoryEnding } from '@/mock/types'
 
 // 接口定义
 interface DialogueOption {
@@ -74,6 +83,7 @@ interface DialogueLine {
   content: string // 对话内容
   options?: DialogueOption[] // (可选) 分支选项
   task?: Task // (可选) 任务信息
+  ending?: StoryEnding // (可选) 结局数据，当 type: 'end' 且有 endingId 时会被填充
 }
 
 // Props 定义
@@ -107,10 +117,19 @@ const isTaskNode = computed(() => {
   return currentLine.value?.speakerType === 'task' && currentLine.value?.task
 })
 
+const isEndingNode = computed(() => {
+  return currentLine.value?.ending !== undefined
+})
+
 // 方法
 const onOverlayTap = () => {
   // 如果是任务节点，不自动继续（需要用户完成任务）
   if (isTaskNode.value) {
+    return
+  }
+
+  // 如果是结局节点，不自动继续（强制用户点击卡片按钮）
+  if (isEndingNode.value) {
     return
   }
 
@@ -145,6 +164,10 @@ const handleTaskComplete = (success: boolean, result?: any) => {
 
   // 任务完成后继续下一句对话
   nextDialogue()
+}
+
+const handleEndingClose = () => {
+  endDialogue()
 }
 
 const skipDialogue = () => {
