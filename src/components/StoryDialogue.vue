@@ -1,300 +1,281 @@
 <template>
-  <view v-if="visible" class="dialogue-overlay" @tap="onOverlayTap">
-    <!-- 背景图片 -->
-    <image
-      v-if="bgImage"
-      :src="bgImage"
-      class="dialogue-background"
-      mode="aspectFill"
-    />
+	<view v-if="visible" class="dialogue-overlay" @tap="onOverlayTap">
+		<image v-if="bgImage" :src="bgImage" class="dialogue-background" mode="aspectFill" />
 
-    <!-- 旁白模式：暗化背景 -->
-    <view
-      v-if="currentLine?.speakerType === 'narrator'"
-      class="dialogue-overlay narrator-overlay"
-    />
+		<view v-if="currentLine?.speakerType === 'narrator'" class="dialogue-overlay narrator-overlay" />
 
-    <!-- 任务面板 - 当是任务节点时显示 -->
-    <TaskPanel
-      v-if="isTaskNode && currentLine?.task"
-      :task="currentLine.task"
-      @complete="handleTaskComplete"
-    />
+		<view v-if="showTask" class="task-layer" @tap.stop>
+			<TaskPanel :task="currentLine.task" @complete="handleTaskComplete" />
+		</view>
 
-    <!-- 结局卡片 - 当是结局节点时显示 -->
-    <EndingCard
-      v-if="isEndingNode && currentLine?.ending"
-      :ending="currentLine.ending"
-      @close="handleEndingClose"
-    />
+		<view v-else-if="showTrueEndingCard" class="ending-layer" @tap.stop>
+			<EndingCard :ending="currentLine.ending" @close="handleEndingClose" />
+		</view>
 
-    <!-- 选项层 - 当有选项时显示 -->
-    <ChoicePanel
-      v-if="currentLine?.options && currentLine.options.length > 0"
-      :options="currentLine.options"
-      @select="handleOptionSelect"
-    />
+		<view v-else class="dialogue-layer">
+			<ChoicePanel v-if="hasOptions" :options="currentLine.options" @select="handleOptionSelect" />
 
-    <!-- 对话框组件 - 当没有选项且不是任务节点时显示 -->
-    <DialogueBox
-      v-if="!isTaskNode && (!currentLine?.options || currentLine.options.length === 0)"
-      :content="currentLine?.content || ''"
-      :name="currentLine?.name || ''"
-      :avatar="currentLine?.avatar"
-      :speaker-type="currentLine?.speakerType || 'narrator'"
-      :has-options="!!(currentLine?.options && currentLine.options.length > 0)"
-      @next="nextDialogue"
-    />
+			<DialogueBox 
+				v-if="!hasOptions" 
+				:key="currentLine?.id" 
+				:content="currentLine?.content || ''"
+				:name="currentLine?.name || ''" 
+				:avatar="currentLine?.avatar"
+				:speaker-type="currentLine?.speakerType || 'narrator'" 
+				@next="handleDialogueTap" 
+			/>
+		</view>
 
-    <!-- 快速跳过按钮 -->
-    <view class="skip-button" @tap.stop="skipDialogue">
-      <text class="skip-text">跳过 (SKIP)</text>
-    </view>
-  </view>
+		<view v-if="!showTrueEndingCard" class="skip-button" @tap.stop="skipDialogue">
+			<text class="skip-text">跳过 (SKIP)</text>
+		</view>
+	</view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import DialogueBox from './story/DialogueBox.vue'
-import ChoicePanel from './story/ChoicePanel.vue'
-import TaskPanel from './story/TaskPanel.vue'
-import EndingCard from './story/EndingCard.vue'
-import type { StoryEnding } from '@/mock/types'
+	import { ref, computed, watch } from 'vue'
+	import DialogueBox from './story/DialogueBox.vue'
+	import ChoicePanel from './story/ChoicePanel.vue'
+	import TaskPanel from './story/TaskPanel.vue'
+	import EndingCard from './story/EndingCard.vue'
+	import type { StoryEnding } from '@/mock/types'
 
-// 接口定义
-interface DialogueOption {
-  label: string
-  value: string
-}
+	// 接口定义
+	interface DialogueOption {
+		label : string
+		value : string
+	}
 
-interface Task {
-  type: 'question' | 'action'
-  description: string
-  options?: string[] // 问题选项
-  correctOption?: string | number // 正确答案（索引或值）
-  actionText?: string // 动作按钮自定义文本
-}
+	interface Task {
+		type : 'question' | 'action'
+		description : string
+		options ?: string[]
+		correctOption ?: string | number
+		actionText ?: string
+	}
 
-interface DialogueLine {
-  id: string
-  speakerType: 'player' | 'npc' | 'narrator' | 'task'
-  name: string // 显示的名字，如 "林文渊" 或 "陈灵儿"
-  avatar?: string // 立绘图片路径
-  content: string // 对话内容
-  options?: DialogueOption[] // (可选) 分支选项
-  task?: Task // (可选) 任务信息
-  ending?: StoryEnding // (可选) 结局数据，当 type: 'end' 且有 endingId 时会被填充
-}
+	interface DialogueLine {
+		id : string
+		speakerType : 'player' | 'npc' | 'narrator' | 'task'
+		name : string
+		avatar ?: string
+		content : string
+		options ?: DialogueOption[]
+		task ?: Task
+		ending ?: StoryEnding
+	}
 
-// Props 定义
-interface Props {
-  visible: boolean // v-model:visible 控制显示隐藏
-  script: DialogueLine[] // 剧本列表
-  bgImage?: string // (可选) 当前场景背景图
-}
+	// Props 定义
+	interface Props {
+		visible : boolean
+		script : DialogueLine[]
+		bgImage ?: string
+	}
 
-const props = withDefaults(defineProps<Props>(), {
-  bgImage: ''
-})
+	const props = withDefaults(defineProps<Props>(), {
+		bgImage: ''
+	})
 
-// Emits 定义
-const emit = defineEmits<{
-  'update:visible': [value: boolean]
-  'option-selected': [option: DialogueOption]
-  'dialogue-end': []
-  'line-change': [line: DialogueLine]
-}>()
+	// Emits 定义
+	const emit = defineEmits<{
+		'update:visible' : [value: boolean]
+		'option-selected' : [option: DialogueOption]
+		'dialogue-end' : []
+		'line-change' : [line: DialogueLine]
+	}>()
 
-// 响应式数据
-const currentIndex = ref(0)
+	// 响应式数据
+	const currentIndex = ref(0)
 
-// 计算属性
-const currentLine = computed(() => {
-  return props.script[currentIndex.value] || null
-})
+	// 计算属性
+	const currentLine = computed(() => {
+		return props.script[currentIndex.value] || null
+	})
 
-const isTaskNode = computed(() => {
-  return currentLine.value?.speakerType === 'task' && currentLine.value?.task
-})
+	// 🔥 [关键修改] 只有明确包含 ending 数据的才是真结局
+	const showTrueEndingCard = computed(() => {
+		return !!currentLine.value?.ending
+	})
 
-const isEndingNode = computed(() => {
-  return currentLine.value?.ending !== undefined
-})
+	// 🔥 [关键修改] 识别"普通结束"节点 (type='end' 但没有 ending 数据)
+	const isNormalEnd = computed(() => {
+		return currentLine.value?.type === 'end' && !currentLine.value?.ending
+	})
 
-// 方法
-const onOverlayTap = () => {
-  // 如果是任务节点，不自动继续（需要用户完成任务）
-  if (isTaskNode.value) {
-    return
-  }
+	const showTask = computed(() => {
+		return currentLine.value?.speakerType === 'task' && !!currentLine.value?.task
+	})
 
-  // 如果是结局节点，不自动继续（强制用户点击卡片按钮）
-  if (isEndingNode.value) {
-    return
-  }
+	const hasOptions = computed(() => {
+		return !!(currentLine.value?.options && currentLine.value.options.length > 0)
+	})
 
-  // 如果有选项，不自动继续
-  if (currentLine.value?.options && currentLine.value.options.length > 0) {
-    return
-  }
+	// 方法
+	const onOverlayTap = () => {
+		handleDialogueTap()
+	}
 
-  // 否则继续下一句对话
-  nextDialogue()
-}
+	// 统一处理点击逻辑
+	const handleDialogueTap = () => {
+		if (showTask.value) return
+		if (showTrueEndingCard.value) return // 真结局必须点卡片按钮
+		if (hasOptions.value) return
 
-const nextDialogue = () => {
-  if (currentIndex.value < props.script.length - 1) {
-    currentIndex.value++
-    emit('line-change', currentLine.value!)
-  } else {
-    // 对话结束
-    endDialogue()
-  }
-}
+		// 🔥 [关键修改] 如果是普通结束节点，点击直接退出
+		if (isNormalEnd.value) {
+			endDialogue()
+			return
+		}
 
-const handleOptionSelect = (option: DialogueOption) => {
-  emit('option-selected', option)
-  // 仅通知父组件，不要自己调用 nextDialogue()！
-  // 控制权完全移交给父组件（通过 props.script 更新驱动）
-}
+		// 否则继续下一句
+		nextDialogue()
+	}
 
-const handleTaskComplete = (success: boolean, result?: any) => {
-  console.log('Task completed:', { success, result })
-  
-  const node = currentLine.value
+	const nextDialogue = () => {
+		if (currentIndex.value < props.script.length - 1) {
+			currentIndex.value++
+			emit('line-change', currentLine.value!)
+		} else {
+			// 如果已经是最后一句，直接结束
+			endDialogue()
+		}
+	}
 
-  if (success) {
-    // 🎉 成功逻辑
-    if (node?.nextId) {
-      // 借用 option-selected 事件，告诉父组件(index.vue)去加载成功的后续剧情
-      // 这里构造一个伪造的 option 对象
-      emit('option-selected', { 
-        label: '任务成功', 
-        value: 'success', 
-        nextId: node.nextId 
-      } as any)
-    } else {
-      // 如果没有后续，就按普通翻页处理（兜底）
-      nextDialogue()
-    }
-  } else {
-    // 💀 失败逻辑
-    if (node?.failId) {
-      // 如果定义了失败分支，跳转到失败剧情
-      emit('option-selected', { 
-        label: '任务失败', 
-        value: 'fail', 
-        nextId: node.failId 
-      } as any)
-    } else {
-      // ⚠️ 如果没定义失败分支，就提示重试，且不跳转
-      uni.showToast({
-        title: '回答错误，请再试一次',
-        icon: 'none',
-        duration: 2000
-      })
-      // 这里不调用 nextDialogue，让用户停留在当前任务卡片上重试
-    }
-  }
-}
+	const handleOptionSelect = (option : DialogueOption) => {
+		emit('option-selected', option)
+	}
 
-const handleEndingClose = () => {
-  endDialogue()
-}
+	const handleTaskComplete = (success : boolean, result ?: any) => {
+		console.log('Task completed:', { success, result })
+		const node = currentLine.value
 
-const skipDialogue = () => {
-  endDialogue()
-}
+		if (success) {
+			if (node?.nextId) {
+				emit('option-selected', {
+					label: '任务成功',
+					value: 'success',
+					nextId: node.nextId
+				} as any)
+			} else {
+				nextDialogue()
+			}
+		} else {
+			if (node?.failId) {
+				emit('option-selected', {
+					label: '任务失败',
+					value: 'fail',
+					nextId: node.failId
+				} as any)
+			} else {
+				uni.showToast({
+					title: '回答错误，请再试一次',
+					icon: 'none',
+					duration: 2000
+				})
+			}
+		}
+	}
 
-// 供父组件调用的方法：继续下一句对话
-const continueDialogue = () => {
-  if (currentIndex.value < props.script.length - 1) {
-    currentIndex.value++
-    emit('line-change', currentLine.value!)
-  } else {
-    endDialogue()
-  }
-}
+	const handleEndingClose = () => {
+		endDialogue()
+	}
 
-const endDialogue = () => {
-  emit('update:visible', false)
-  emit('dialogue-end')
-}
+	const skipDialogue = () => {
+		endDialogue()
+	}
 
-// 监听显示状态变化，重置索引
-watch(() => props.visible, (newVisible) => {
-  if (newVisible) {
-    currentIndex.value = 0
-  }
-})
+	// 供父组件调用的方法
+	const continueDialogue = () => {
+		if (currentIndex.value < props.script.length - 1) {
+			currentIndex.value++
+			emit('line-change', currentLine.value!)
+		} else {
+			// 如果是普通结束页，保持显示等待用户点击退出；否则直接退出
+			if (!isNormalEnd.value) {
+				endDialogue()
+			}
+		}
+	}
 
-// 监听script prop变化，强制重置索引以重新开始播放
-watch(() => props.script, (newScript) => {
-  if (newScript && newScript.length > 0) {
-    currentIndex.value = 0
-  }
-})
+	const endDialogue = () => {
+		emit('update:visible', false)
+		emit('dialogue-end')
+	}
 
-// 暴露方法给父组件
-defineExpose({
-  nextDialogue,
-  skipDialogue,
-  continueDialogue,
-  currentIndex,
-  currentLine
-})
+	// 监听显示状态变化，重置索引
+	watch(() => props.visible, (newVisible) => {
+		if (newVisible) {
+			currentIndex.value = 0
+		}
+	})
+
+	// 监听script prop变化，强制重置索引
+	watch(() => props.script, (newScript) => {
+		if (newScript && newScript.length > 0) {
+			currentIndex.value = 0
+		}
+	})
+
+	// 暴露方法给父组件
+	defineExpose({
+		nextDialogue,
+		skipDialogue,
+		continueDialogue,
+		currentIndex,
+		currentLine
+	})
 </script>
 
 <style lang="scss" scoped>
-.dialogue-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1000;
+	.dialogue-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 1000;
 
-  .dialogue-background {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: -1;
-  }
+		.dialogue-background {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			z-index: -1;
+		}
 
-  .narrator-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 1;
-  }
-}
+		.narrator-overlay {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0, 0, 0, 0.7);
+			z-index: 1;
+		}
+	}
 
-// 跳过按钮
-.skip-button {
-  position: fixed;
-  top: 40rpx;
-  right: 40rpx;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 15rpx 25rpx;
-  border-radius: 25rpx;
-  z-index: 200; // 最高层级，确保始终可点击
-  backdrop-filter: blur(10rpx);
-  border: 2rpx solid rgba(255, 255, 255, 0.2);
+	// 跳过按钮
+	.skip-button {
+		position: fixed;
+		top: 40rpx;
+		right: 40rpx;
+		background: rgba(0, 0, 0, 0.8);
+		color: white;
+		padding: 15rpx 25rpx;
+		border-radius: 25rpx;
+		z-index: 200; // 最高层级，确保始终可点击
+		backdrop-filter: blur(10rpx);
+		border: 2rpx solid rgba(255, 255, 255, 0.2);
 
-  .skip-text {
-    font-size: 24rpx;
-    font-weight: 500;
-  }
+		.skip-text {
+			font-size: 24rpx;
+			font-weight: 500;
+		}
 
-  &:active {
-    opacity: 0.8;
-    transform: scale(0.95);
-  }
-}
+		&:active {
+			opacity: 0.8;
+			transform: scale(0.95);
+		}
+	}
 </style>

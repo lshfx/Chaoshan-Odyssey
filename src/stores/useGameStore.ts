@@ -91,44 +91,57 @@ export const useGameStore = defineStore('game', () => {
   })
 
   // 获取可见的地图标记（基于剧情解锁的POI）
-  const visibleMarkers = computed(() => {
-    const allPois = currentCityData.value?.pois || []
-    const markers = allPois
-      .filter(poi => unlockedPoiIds.value.includes(poi.id))
-      .map((poi, index) => {
-        // 确保POI ID是字符串格式
-        const poiId = String(poi.id)
-        console.log('生成POI标记:', poi.name, '原始ID:', poiId, '类型:', typeof poiId)
-
-        return {
-          // 1. 生成唯一的数字 ID (用于地图组件 - UniApp要求必须是number)
-          id: 900000000 + index, // 从900000000开始，避免与其他ID冲突
-          // 2. 关键：保留原始字符串 ID (用于数据查找)
-          poiId: poiId, // 用于查找POI数据
-          latitude: poi.latitude,
-          longitude: poi.longitude,
-          // 关键修改：使用专用的任务标记图标
-          iconPath: '/static/markers/mission-marker.png', // 使用markers目录下的任务专用图标
-          width: 40,
-          height: 40,
-          anchor: { x: 0.5, y: 0.5 },
-          // 增强气泡显示效果，让任务点更加醒目
-          callout: {
-            content: poi.name,
-            color: '#FFFFFF', // 白色文字，在黑色背景上更醒目
-            fontSize: 12,
-            borderRadius: 6, // 稍微增大圆角
-            bgColor: '#FF4444', // 红色背景，表示任务点
-            padding: 6,
-            display: 'ALWAYS',
-            boxShadow: '0 2px 6px rgba(255, 68, 68, 0.3)' // 添加阴影效果
+    const visibleMarkers = computed(() => {
+      const allPois = currentCityData.value?.pois || []
+      
+      // ✅ 核心修复：这里必须从 missionStatus.value.unlockedPOIs 读取！
+      // 之前的 unlockedPoiIds.value 是旧逻辑遗留的变量，导致新解锁的地点不显示
+      const unlockedList = missionStatus.value.unlockedPOIs
+  
+      // 过滤出已解锁的POI
+      const markers = allPois
+        .filter(poi => unlockedList.includes(poi.id))
+        .map((poi, index) => {
+          // 判断是否是当前导航目标
+          const isTarget = targetLocation.value && poi.name === targetLocation.value.name
+  
+          return {
+            id: 900000000 + index, // 唯一的数字 ID
+            poiId: String(poi.id), // 原始字符串 ID
+            latitude: poi.latitude,
+            longitude: poi.longitude,
+            
+            // 图标逻辑
+            iconPath: isTarget 
+              ? '/static/markers/mission-marker.png'  // 🔴 目标图标 (请确保文件存在!)
+              : '/static/my-location.png',            // 🔵 普通图标
+              
+            // 目标点放大
+            width: isTarget ? 40 : 32,
+            height: isTarget ? 40 : 32,
+            
+            anchor: { x: 0.5, y: 1 },
+            
+            // 气泡逻辑
+            callout: {
+              content: poi.name,
+              color: '#FFFFFF',
+              fontSize: 12,
+              borderRadius: 6,
+              // 目标点红色背景，普通点灰色
+              bgColor: isTarget ? '#FF4444' : '#555555', 
+              padding: 8,
+              // 目标点强制显示
+              display: 'ALWAYS',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)'
+            },
+            
+            zIndex: isTarget ? 999 : 1
           }
-        }
-      })
-
-    console.log('生成的POI标记数组:', markers.map(m => ({ id: m.id, poiId: m.poiId, name: m.callout.content })))
-    return markers
-  })
+        })
+  
+      return markers
+    })
 
   // 获取当前城市的角色列表
   const currentCityCharacters = computed(() => {
@@ -250,6 +263,10 @@ export const useGameStore = defineStore('game', () => {
       const poi = currentCityPOIs.value.find(p => p.id === poiId)
       if (poi) {
         missionStatus.value.currentObjective = `前往${poi.name}完成任务`
+
+        // 关键修复：自动将新解锁的 POI 设置为导航目标
+        setTargetLocation(poi.latitude, poi.longitude, poi.name)
+        console.log('设置导航目标:', poi.name, poi.latitude, poi.longitude)
       }
     }
   }
@@ -380,26 +397,58 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // 检查并解锁下一个POI
-  const checkAndUnlockNextPOI = () => {
-    const allPOIs = currentCityPOIs.value
-    const unlockedPOIs = missionStatus.value.unlockedPOIs
-    const collectedSealsCount = inventory.value.seals.length
-
-    // 根据印章数量解锁新的POI
-    if (collectedSealsCount >= 1 && !unlockedPOIs.includes('kungfu_tea_house')) {
-      unlockPOI('kungfu_tea_house')
+  // 检查并解锁下一个POI（通用版）
+    const checkAndUnlockNextPOI = () => {
+      // 1. 获取当前角色和背包状态
+      const character = currentUser.value
+      const collectedSealsCount = inventory.value.seals.length
+  
+      if (!character || !character.routeOrder) {
+        console.warn('当前角色未配置路线 (routeOrder)')
+        return
+      }
+  
+      // 2. 计算下一个目标的索引
+      // 逻辑：
+      // 0印章 -> 在第0站(初始站)
+      // 1印章 -> 应该解锁 routeOrder[1] (第2站)
+      // 2印章 -> 应该解锁 routeOrder[2] (第3站)
+      const nextIndex = collectedSealsCount
+      
+      // 检查是否还有下一站 (避免数组越界)
+      if (nextIndex < character.routeOrder.length) {
+        const nextPOIId = character.routeOrder[nextIndex]
+        
+        console.log(`[路由系统] 角色:${character.name} 印章数:${collectedSealsCount} 下一站:${nextPOIId}`)
+  
+        // 3. 执行解锁和导航
+        if (nextPOIId) {
+          // 解锁
+          if (!missionStatus.value.unlockedPOIs.includes(nextPOIId)) {
+            missionStatus.value.unlockedPOIs.push(nextPOIId)
+            console.log('解锁新地点:', nextPOIId)
+          }
+  
+          // 强制更新导航
+          const poi = getPOIById(nextPOIId)
+          if (poi) {
+            missionStatus.value.currentObjective = `前往${poi.name}继续探索`
+            setTargetLocation(poi.latitude, poi.longitude, poi.name)
+            
+            // 可选：弹窗提示
+            setTimeout(() => {
+               uni.showToast({
+                 title: `新地点解锁：${poi.name}`,
+                 icon: 'none',
+                 duration: 3000
+               })
+            }, 500)
+          }
+        }
+      } else {
+        console.log('所有路线点已解锁，或者已到达终局')
+      }
     }
-    if (collectedSealsCount >= 2 && !unlockedPOIs.includes('lion_culture_area')) {
-      unlockPOI('lion_culture_area')
-    }
-    if (collectedSealsCount >= 3 && !unlockedPOIs.includes('qiaopi_museum')) {
-      unlockPOI('qiaopi_museum')
-    }
-    if (collectedSealsCount >= 4 && !unlockedPOIs.includes('jinxian_gate')) {
-      unlockPOI('jinxian_gate')
-    }
-  }
 
   // 保存游戏进度
   const saveProgress = () => {

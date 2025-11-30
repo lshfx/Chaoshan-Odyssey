@@ -18,6 +18,7 @@ export interface Character {
 	hiddenSecret : string
 	tags : string[]
 	isPlunderer ?: boolean
+	routeOrder?: string[];
 }
 
 export interface NPC {
