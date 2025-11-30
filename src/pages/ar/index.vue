@@ -35,8 +35,60 @@
 	import { onLoad, onUnload } from '@dcloudio/uni-app'
 	import { useGameStore } from '../../stores/useGameStore'
 	import { jieyang } from '../../mock/jieyang'
-	import type { NPC, ScriptNode } from '../../mock/types'
+	import type { NPC, ScriptNode, StoryEnding } from '../../mock/types'
 	import StoryDialogue from '../../components/StoryDialogue.vue'
+
+	// 🎭 故事结局数据字典
+	const STORY_ENDINGS: Record<string, StoryEnding> = {
+		ending_perfect: {
+			id: 'ending_perfect',
+			characterId: 'chen_linger',
+			type: 'perfect',
+			title: '完美结局：真相大白',
+			achievement: '真相守护者',
+			description: '成功揭露了蔡福生的真面目，找回了失落的《护卫日志》。百年的冤案终于昭雪，揭阳古城的文脉得以完整传承。',
+			background: '经过一番智斗，陈灵儿不仅保护了珍贵的印章，更重要的是还原了历史的真相。蔡福生的阴谋被彻底粉碎，而那本记录着家族荣耀与责任的《护卫日志》重见天日。揭阳的文脉得以完整传承，你的名字将永远铭记在这座古城的历史中。',
+			imageUrl: '/static/endings/perfect.png',
+			musicUrl: '/static/audio/ending_perfect.mp3',
+			conditions: {
+				minCourage: 1,
+				minClue: 2,
+				minIntimacy: 0
+			}
+		},
+		ending_normal: {
+			id: 'ending_normal',
+			characterId: 'chen_linger',
+			type: 'normal',
+			title: '普通结局：虽胜犹憾',
+			achievement: '古城守夜人',
+			description: '蔡福生被捕，但《护卫日志》下落不明。虽然守护了印章，但当年的真相可能永远埋藏在了历史的尘埃中。',
+			background: '虽然成功阻止了蔡福生的恶行，但那本承载着真相的《护卫日志》在混乱中被焚毁。你守护了揭阳的文化遗产，却失去了揭开全部真相的机会。或许，有些故事注定要带着遗憾继续书写。你成为了这座古城新的守夜人，默默守护着那些不为人知的秘密。',
+			imageUrl: '/static/endings/normal.png',
+			musicUrl: '/static/audio/ending_normal.mp3',
+			conditions: {
+				minCourage: 0,
+				minClue: 0,
+				minIntimacy: 0
+			}
+		},
+		ending_bad: {
+			id: 'ending_bad',
+			characterId: 'chen_linger',
+			type: 'bad',
+			title: '悲剧结局：线索断绝',
+			achievement: '雨夜孤影',
+			description: '关键证据被毁，唯一的线索化为灰烬。你虽然得到了印章，但心中的谜团将永远无法解开。',
+			background: '在那个雨夜，眼看着蔡福生将《护卫日志》投入烈火，所有的线索都化为了灰烬。虽然你成功保护了印章的安全，但那个困扰你多年的谜团却永远失去了答案。从此，每当雨夜降临，你都会独自站在揭阳古城的屋檐下，凝望着那片埋葬真相的废墟，心中留下永远的遗憾。',
+			imageUrl: '/static/endings/bad.png',
+			musicUrl: '/static/audio/ending_bad.mp3',
+			conditions: {
+				minCourage: -1,
+				minClue: 0,
+				minIntimacy: -1
+			}
+		}
+	}
 
 	// Store
 	const gameStore = useGameStore()
@@ -131,7 +183,7 @@
 	}
 
 	// 数据转换函数：将ScriptNode转换为StoryDialogue所需格式
-	const transformNode = (node : ScriptNode) : ScriptNode & { speakerType ?: string; task ?: any } => {
+	const transformNode = (node : ScriptNode) : ScriptNode & { speakerType ?: string; task ?: any; ending ?: StoryEnding } => {
 		const newNode = { ...node } as any
 
 		// 1. 映射 speakerType
@@ -150,6 +202,12 @@
 			} else {
 				newNode.speakerType = 'npc'
 			}
+		}
+
+		// 🎭 3. 注入结局数据 - 关键修复
+		if (node.endingId && STORY_ENDINGS[node.endingId]) {
+			newNode.ending = STORY_ENDINGS[node.endingId]
+			console.log('🎭 注入结局数据:', node.endingId, '->', newNode.ending.title)
 		}
 
 		return newNode
@@ -250,24 +308,53 @@
 	}
 
 	const loadNPCData = () => {
-		const { npcId } = routeParams.value
+		const { npcId, poiId } = routeParams.value
 
 		if (!npcId) {
 			console.log('缺少npcId参数')
 			return
 		}
 
-		// 从jieyang.npcs数组中查找对应的NPC
-		// 注意：这里需要确保从 import { jieyang } from ... 引入了数据
-		currentNPC.value = jieyang.npcs.find((npc : NPC) => npc.id === npcId) || null
+		// 🕵️‍♀️ 开始：动态NPC覆盖机制 - Chen Linger的终局对决
+		let targetNpcId = npcId
+
+		// 条件检查
+		const isChenLinger = gameStore.currentUser?.id === 'chen_linger'
+		const isNotCaiFusheng = gameStore.currentUser?.id !== 'cai_fusheng' // 防止蔡福生打自己
+		const isAtJinxianGate = targetNpcId === 'li_chengshou' || poiId === 'jinxian_gate'
+
+		// 检查是否进入终局阶段 - 拥有前面2个印章表示剧情进展到终局
+		const seals = gameStore.inventory.seals || []
+		const hasSealOne = seals.includes('seal_one')
+		const hasSealTwo = seals.includes('seal_two')
+		const isReadyForFinale = hasSealOne && hasSealTwo
+
+		// 执行覆盖逻辑
+		if (isChenLinger && isNotCaiFusheng && isAtJinxianGate && isReadyForFinale) {
+			targetNpcId = 'cai_fusheng'
+			console.log('⚡ 触发终局对决：陈灵儿 vs 蔡福生')
+			console.log('📍 位置：进贤门 (jinxian_gate)')
+			console.log('📜 剧情进度：已获得前2枚印章，触发最终BOSS战')
+			console.log('🔄 NPC覆盖：li_chengshou -> cai_fusheng')
+		}
+
+		// 从jieyang.npcs数组中查找对应的NPC（使用可能被覆盖的targetNpcId）
+		currentNPC.value = jieyang.npcs.find((npc : NPC) => npc.id === targetNpcId) || null
 
 		if (!currentNPC.value) {
-			console.log('未找到NPC数据:', npcId)
+			console.log('未找到NPC数据:', targetNpcId)
 			uni.showToast({
 				title: '未找到对应的NPC数据',
 				icon: 'none'
 			})
 			return
+		}
+
+		// 如果发生了覆盖，记录调试信息
+		if (targetNpcId !== npcId) {
+			console.log('✅ NPC覆盖成功：')
+			console.log('   原始NPC:', npcId, '->', '覆盖NPC:', targetNpcId)
+			console.log('   当前NPC:', currentNPC.value.name, '(', currentNPC.value.title, ')')
 		}
 
 		// 设置背景图片（使用NPC的background）

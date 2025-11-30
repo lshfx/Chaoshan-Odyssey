@@ -509,7 +509,7 @@ export const npcs: NPC[] = [
 				id: 'act2_end',
 				type: 'end',
 				speaker: '系统',
-				content: '第二幕【青狮怒火】完成。所有的线索都汇聚到了终点——进贤门附近的侨批文物馆。最终的审判即将开始。',
+				content: '第二幕【青狮怒火】完成。所有的线索都汇聚到了终点——进贤门。最终的审判即将开始。',
 				trigger: 'grant_seal'
 			},
 
