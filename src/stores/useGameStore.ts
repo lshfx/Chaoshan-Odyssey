@@ -2,6 +2,11 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { gameData, type Character, type POI, type Seal, type Clue, type Item } from '../mock/gameData'
 
+// NPC进度管理
+interface NPCProgress {
+  [npcId: string]: string // npcId -> nodeId
+}
+
 // [NEW] Define Stat Types
 export type StatType = 'courage' | 'clue' | 'intimacy'
 
@@ -9,6 +14,10 @@ export const useGameStore = defineStore('game', () => {
   // ============ State ============
   const currentCity = ref('jieyang')
   const currentUser = ref<Character | null>(null)
+
+  // NPC进度状态
+  const npcProgress = ref<NPCProgress>({})
+
   const inventory = ref<{
     seals: string[]  // 印章ID列表
     clues: string[]  // 线索ID列表
@@ -674,6 +683,44 @@ export const useGameStore = defineStore('game', () => {
     return 'success'
   }
 
+  // NPC进度管理方法
+  const saveNPCProgress = (npcId: string, nodeId: string) => {
+    // 更新内存状态
+    npcProgress.value[npcId] = nodeId
+
+    // 持久化到本地存储
+    try {
+      const savedProgress = uni.getStorageSync('chaoshan_npc_progress') || {}
+      savedProgress[npcId] = nodeId
+      uni.setStorageSync('chaoshan_npc_progress', savedProgress)
+      console.log(`[NPC进度保存] ${npcId} -> ${nodeId}`)
+    } catch (error) {
+      console.error('保存NPC进度失败:', error)
+    }
+  }
+
+  const getNPCProgress = (npcId: string): string | undefined => {
+    // 从内存状态获取
+    if (npcProgress.value[npcId]) {
+      return npcProgress.value[npcId]
+    }
+
+    // 尝试从本地存储读取
+    try {
+      const savedProgress = uni.getStorageSync('chaoshan_npc_progress') || {}
+      if (savedProgress[npcId]) {
+        // 同步到内存状态
+        npcProgress.value[npcId] = savedProgress[npcId]
+        console.log(`[NPC进度读取] ${npcId} -> ${savedProgress[npcId]}`)
+        return savedProgress[npcId]
+      }
+    } catch (error) {
+      console.error('读取NPC进度失败:', error)
+    }
+
+    return undefined
+  }
+
   // 计算与目标的距离（米）
   const getDistanceToTarget = computed(() => {
     if (!targetLocation.value) return 0
@@ -755,6 +802,10 @@ export const useGameStore = defineStore('game', () => {
     checkCondition,
     resetStoryState,
     checkEnding,
-    checkMissionStatus
+    checkMissionStatus,
+
+    // NPC进度管理
+    saveNPCProgress,
+    getNPCProgress
   }
 })

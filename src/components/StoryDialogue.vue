@@ -154,16 +154,48 @@ const nextDialogue = () => {
 
 const handleOptionSelect = (option: DialogueOption) => {
   emit('option-selected', option)
-  // 选择后继续下一句对话
-  nextDialogue()
+  // 仅通知父组件，不要自己调用 nextDialogue()！
+  // 控制权完全移交给父组件（通过 props.script 更新驱动）
 }
 
 const handleTaskComplete = (success: boolean, result?: any) => {
-  // 可以在这里添加任务完成的逻辑，比如记录结果
   console.log('Task completed:', { success, result })
+  
+  const node = currentLine.value
 
-  // 任务完成后继续下一句对话
-  nextDialogue()
+  if (success) {
+    // 🎉 成功逻辑
+    if (node?.nextId) {
+      // 借用 option-selected 事件，告诉父组件(index.vue)去加载成功的后续剧情
+      // 这里构造一个伪造的 option 对象
+      emit('option-selected', { 
+        label: '任务成功', 
+        value: 'success', 
+        nextId: node.nextId 
+      } as any)
+    } else {
+      // 如果没有后续，就按普通翻页处理（兜底）
+      nextDialogue()
+    }
+  } else {
+    // 💀 失败逻辑
+    if (node?.failId) {
+      // 如果定义了失败分支，跳转到失败剧情
+      emit('option-selected', { 
+        label: '任务失败', 
+        value: 'fail', 
+        nextId: node.failId 
+      } as any)
+    } else {
+      // ⚠️ 如果没定义失败分支，就提示重试，且不跳转
+      uni.showToast({
+        title: '回答错误，请再试一次',
+        icon: 'none',
+        duration: 2000
+      })
+      // 这里不调用 nextDialogue，让用户停留在当前任务卡片上重试
+    }
+  }
 }
 
 const handleEndingClose = () => {
@@ -172,6 +204,16 @@ const handleEndingClose = () => {
 
 const skipDialogue = () => {
   endDialogue()
+}
+
+// 供父组件调用的方法：继续下一句对话
+const continueDialogue = () => {
+  if (currentIndex.value < props.script.length - 1) {
+    currentIndex.value++
+    emit('line-change', currentLine.value!)
+  } else {
+    endDialogue()
+  }
 }
 
 const endDialogue = () => {
@@ -186,10 +228,18 @@ watch(() => props.visible, (newVisible) => {
   }
 })
 
+// 监听script prop变化，强制重置索引以重新开始播放
+watch(() => props.script, (newScript) => {
+  if (newScript && newScript.length > 0) {
+    currentIndex.value = 0
+  }
+})
+
 // 暴露方法给父组件
 defineExpose({
   nextDialogue,
   skipDialogue,
+  continueDialogue,
   currentIndex,
   currentLine
 })

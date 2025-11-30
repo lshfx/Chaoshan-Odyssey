@@ -1,6 +1,6 @@
 import type { NPC, ScriptNode } from '../types'
 
-export const npcs : NPC[] = [
+export const npcs: NPC[] = [
 	{
 		id: 'lin_wenyuan',
 		name: '林文渊',
@@ -112,7 +112,7 @@ export const npcs : NPC[] = [
 				options: [
 					{
 						label: '公事公办',
-						text: '（清了清嗓子，亮出腰牌）林先生，学宫古籍失窃案有眉目了，但我需要借“学宫印”一用。',
+						text: '（清了清嗓子，亮出腰牌）林先生，学宫古籍失窃案有眉目了，但我需要借"学宫印"一用。',
 						nextId: 'act1_branch_a',
 						effects: { courage: 1, intimacy: -1 } // 🔴 果敢+1, 🟢 亲密度-1
 					},
@@ -121,8 +121,30 @@ export const npcs : NPC[] = [
 						text: '（上前一步，恭敬行礼）林先生，晚辈灵儿求见。事关二十年前我父母的旧案，求先生成全。',
 						nextId: 'act1_branch_b',
 						effects: { intimacy: 1 } // 🟢 亲密度+1
+					},
+					{
+						label: '稍后再来',
+						text: '（有些为难，看看再说吧...）',
+						nextId: 'act1_leave_choice',
+						effects: { courage: -1, intimacy: 0 } // 🔴 果敢-1, 亲密度不变
 					}
 				]
+			},
+			// 3-1. 离开节点（点击"稍后再来"后触发）
+			{
+				id: 'act1_leave_choice',
+				type: 'normal',
+				speaker: '陈灵儿',
+				avatar: '/static/avatars/chen_linger.png',
+				content: '（你感到一阵心烦意乱，决定先离开学宫，整理一下思绪。晚些时候再回来找林先生吧。）',
+				nextId: 'act1_leave'
+			},
+			// 3-2. 离开节点（存档并退出）
+			{
+				id: 'act1_leave',
+				type: 'end',
+				speaker: '系统',
+				content: '你决定暂时离开，稍后再来挑战。'
 			},
 			// 4. 分支 A：冷淡回应
 			{
@@ -172,7 +194,37 @@ export const npcs : NPC[] = [
 				id: 'act1_quiz_1',
 				type: 'task',
 				taskId: 'riddle_one',
-				nextId: 'act1_puzzle_success'
+				nextId: 'act1_puzzle_success',
+				failId: 'act1_fail'
+			},
+			// 2. 失败反馈节点 (Fail Feedback)
+			{
+			    id: 'act1_fail',
+			    type: 'normal',
+			    speaker: '林文渊',
+			    avatar: '/static/npcs/lin_wenyuan.png',
+			    content: '（摇了摇头）连这个都不知道？年轻人，基本功还要再练练。', // 嘲讽一下
+			    nextId: 'act1_retry_choice'
+			},
+			
+			// 3. 重试选择节点 (Retry Choice)
+			{
+			    id: 'act1_retry_choice',
+			    type: 'choice',
+			    speaker: '系统',
+			    content: '林先生似乎对你很不满意。要重新挑战吗？',
+			    options: [
+			        {
+			            label: '我准备好了',
+			            text: '（深吸一口气）林先生，刚才是我大意了，请再问一次。',
+			            nextId: 'act1_quiz_1' // 🔄 关键：闭环！跳回任务节点ID
+			        },
+			        {
+			            label: '稍后再来',
+			            text: '（羞愧地低下头）晚辈这就去温书。',
+			            nextId: 'act1_leave'  // 🚪 退出或去其他地方，现在这个节点已存在
+			        }
+			    ]
 			},
 
 			// --- 任务完成后的剧情 ---
@@ -235,7 +287,45 @@ export const npcs : NPC[] = [
 				id: 'act1_end',
 				type: 'end',
 				speaker: '系统',
-				content: '第一幕【学宫试探】完成。线索指向了古城老街的青狮表演场。去找陈狮魁吧。'
+				content: '第一幕【学宫试探】完成。线索指向了古城老街的青狮表演场。去找陈狮魁吧。',
+				trigger: 'grant_seal'
+			},
+
+			// --- 通关后随机闲聊节点 ---
+			{
+				id: 'completed_hint',
+				type: 'end',
+				speaker: '林文渊',
+				avatar: '/static/npcs/lin_wenyuan.png',
+				content: '你已经证明了自己的实力。听说古城老街那边锣鼓喧天，或许你应该去见见陈狮魁班主。'
+			},
+			{
+				id: 'completed_chat_reading',
+				type: 'end',
+				speaker: '林文渊',
+				avatar: '/static/npcs/lin_wenyuan.png',
+				content: '（手不释卷）"学而不思则罔，思而不学则殆"。拿到了印章也要多读书啊。'
+			},
+			{
+				id: 'completed_chat_care',
+				type: 'end',
+				speaker: '林文渊',
+				avatar: '/static/npcs/lin_wenyuan.png',
+				content: '那枚儒学文脉章传了几百年，切记妥善保管，莫要让文脉断了传承。'
+			},
+			{
+				id: 'completed_chat_history',
+				type: 'end',
+				speaker: '林文渊',
+				avatar: '/static/npcs/lin_wenyuan.png',
+				content: '揭阳学宫始建于北宋，历经千年风雨。你要守护的不仅是印章，更是这段文脉历史。'
+			},
+			{
+				id: 'completed_chat_wisdom',
+				type: 'end',
+				speaker: '林文渊',
+				avatar: '/static/npcs/lin_wenyuan.png',
+				content: '（看着你离去的背影）"知者不惑，仁者不忧，勇者不惧"。孩子，你的路还很长。'
 			}
 		]
 	},
@@ -419,7 +509,38 @@ export const npcs : NPC[] = [
 				id: 'act2_end',
 				type: 'end',
 				speaker: '系统',
-				content: '第二幕【青狮怒火】完成。所有的线索都汇聚到了终点——进贤门附近的侨批文物馆。最终的审判即将开始。'
+				content: '第二幕【青狮怒火】完成。所有的线索都汇聚到了终点——进贤门附近的侨批文物馆。最终的审判即将开始。',
+				trigger: 'grant_seal'
+			},
+
+			// --- 通关后随机闲聊节点 ---
+			{
+				id: 'completed_hint',
+				type: 'end',
+				speaker: '陈狮魁',
+				avatar: '/static/npcs/chen_shikui.png',
+				content: '你这身手不错啊！不过真正的考验还在后头。听说进贤门那边有新的线索。'
+			},
+			{
+				id: 'completed_chat_lion',
+				type: 'end',
+				speaker: '陈狮魁',
+				avatar: '/static/npcs/chen_shikui.png',
+				content: '（擦拭着狮头）青狮舞要的是那股子精气神！你这年轻人，有当年那个护卫的种。'
+			},
+			{
+				id: 'completed_chat_courage',
+				type: 'end',
+				speaker: '陈狮魁',
+				avatar: '/static/npcs/chen_shikui.png',
+				content: '功夫茶要静，舞狮要动！一静一动，才是咱们潮汕人的本事。印章要保管好啊。'
+			},
+			{
+				id: 'completed_chat_tradition',
+				type: 'end',
+				speaker: '陈狮魁',
+				avatar: '/static/npcs/chen_shikui.png',
+				content: '这青狮舞传了几百年，驱邪镇煞。你手里的印章，关系着咱们揭阳的根。'
 			}
 		]
 	},
