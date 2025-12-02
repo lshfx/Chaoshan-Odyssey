@@ -25,7 +25,7 @@
 
 		<!-- 对话层 (z-index: 999) -->
 		<StoryDialogue ref="dialogueComponent" v-model:visible="gameStore.isDialogueVisible"
-			:script="gameStore.currentScript" :bg-image="bgImage" @option-selected="handleOptionSelected"
+			:script="gameStore.currentScript" :bg-image="isCameraAuth ? '' : bgImage" @option-selected="handleOptionSelected"
 			@dialogue-end="handleDialogueEnd" @line-change="handleLineChange" />
 	</view>
 </template>
@@ -39,7 +39,7 @@
 	import StoryDialogue from '../../components/StoryDialogue.vue'
 
 	// 🎭 故事结局数据字典
-	const STORY_ENDINGS: Record<string, StoryEnding> = {
+	const STORY_ENDINGS : Record<string, StoryEnding> = {
 		ending_perfect: {
 			id: 'ending_perfect',
 			characterId: 'chen_linger',
