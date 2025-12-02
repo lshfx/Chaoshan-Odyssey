@@ -11,6 +11,7 @@ export const npcs: NPC[] = [
 		description: '揭阳学宫的资深讲学者，守护儒学文脉印章',
 		personality: '严谨博学，注重礼仪',
 		sealId: 'seal_one',
+
 		dialogue: [
 			{
 				id: 'greeting',
@@ -21,72 +22,14 @@ export const npcs: NPC[] = [
 				text: '请在大成殿向孔子像行揖礼，然后回答我的两个问题。'
 			}
 		],
-		tasks: [
-			{
-				id: 'bow_to_confucius',
-				description: '在大成殿向孔子像行揖礼',
-				type: 'action',
-				correctOption: '行揖礼'
-			},
-			{
-				id: 'riddle_one',
-				description: '揭阳学宫始建于哪个朝代？',
-				type: 'question',
-				options: ['唐朝', '宋朝', '明朝', '清朝'],
-				correctOption: '宋朝',
-				correctAnswer: '揭阳学宫始建于北宋庆历年间'
-			},
-			{
-				id: 'riddle_two',
-				description: '"万世师表"是对谁的尊称？',
-				type: 'question',
-				options: ['孟子', '孔子', '荀子', '韩愈'],
-				correctOption: '孔子',
-				correctAnswer: '"万世师表"致敬孔子'
-			},
-			// 新增任务定义以支持ScriptNode中的taskId
-			{
-				id: 'ritual_test_task',
-				description: '完成揖礼仪式，表达对先贤的敬意',
-				type: 'action',
-				correctOption: '行揖礼',
-				actionText: '行揖礼'
-			},
-			{
-				id: 'direct_seal_task',
-				description: '直接接受印章考验，跳过文化学习',
-				type: 'choice',
-				options: ['是的，直接开始', '不，我想先了解文化'],
-				correctOption: '是的，直接开始'
-			},
-			{
-				id: 'history_test_task',
-				description: '测试你对揭阳学宫历史的了解程度',
-				type: 'question',
-				options: ['北宋', '南宋', '唐朝', '明朝'],
-				correctOption: '北宋',
-				correctAnswer: '揭阳学宫始建于北宋庆历四年'
-			},
-			{
-				id: 'etiquette_test_task',
-				description: '儒家礼仪知识测试',
-				type: 'question',
-				options: ['揖礼', '鞠躬', '抱拳', '作揖'],
-				correctOption: '揖礼',
-				correctAnswer: '揖礼是古代最正式的礼仪之一'
-			},
-			{
-				id: 'knowledge_test_task',
-				description: '揭阳学宫历史知识综合测试',
-				type: 'question',
-				options: ['韩愈', '朱熹', '周敦颐', '王阳明'],
-				correctOption: '朱熹',
-				correctAnswer: '朱熹是宋代理学集大成者，对粤东文化影响深远'
-			}
-		],
-		// 🌟 核心修正：陈灵儿线 - 林文渊完整互动剧本
-		scriptNodes: [
-			// 1. 开场独白（建立代入感）
+
+		// 新增：支持角色分片的剧本系统
+		storylines: {
+			'chen_linger': {
+				characterId: 'chen_linger',
+				startNodeId: 'act1_intro', // 对应原剧本的入口
+				nodes: [
+					// 1. 开场独白（建立代入感）
 			{
 				id: 'act1_intro',
 				type: 'normal',
@@ -327,7 +270,41 @@ export const npcs: NPC[] = [
 				avatar: '/static/npcs/lin_wenyuan.png',
 				content: '（看着你离去的背影）"知者不惑，仁者不忧，勇者不惧"。孩子，你的路还很长。'
 			}
-		]
+				]
+			}
+		},
+
+		// 通用任务：所有角色都可以访问
+		commonTasks: [
+			{
+				id: 'bow_to_confucius',
+				description: '在大成殿向孔子像行揖礼',
+				type: 'action',
+				correctOption: '行揖礼'
+			},
+			{
+				id: 'riddle_one',
+				description: '揭阳学宫始建于哪个朝代？',
+				type: 'question',
+				options: ['唐朝', '宋朝', '明朝', '清朝'],
+				correctOption: '宋朝',
+				correctAnswer: '揭阳学宫始建于北宋庆历年间'
+			},
+			{
+				id: 'riddle_two',
+				description: '"万世师表"是对谁的尊称？',
+				type: 'question',
+				options: ['孟子', '孔子', '荀子', '韩愈'],
+				correctOption: '孔子',
+				correctAnswer: '"万世师表"致敬孔子'
+			}
+		],
+
+		// 保持向后兼容的旧字段（已废弃）
+		/** @deprecated 使用 storylines[characterId].nodes 替代 */
+		scriptNodes: [],
+		/** @deprecated 使用 commonTasks 替代 */
+		tasks: [],
 	},
 	{
 		id: 'chen_shikui',
@@ -340,7 +317,6 @@ export const npcs: NPC[] = [
 		personality: '刚猛豪爽，吃软不吃硬',
 		sealId: 'seal_two',
 
-		// ✅ 补回旧字段，解决 TS 报错
 		dialogue: [
 			{
 				id: 'greeting',
@@ -352,27 +328,12 @@ export const npcs: NPC[] = [
 			}
 		],
 
-		// --- 任务定义 ---
-		tasks: [
-			{
-				id: 'lion_dance_action',
-				description: '模仿青狮步法：左脚虚点，右拳高举，怒目圆睁',
-				type: 'action',
-				correctOption: '完成动作',
-				actionText: '演练青狮步'
-			},
-			{
-				id: 'lion_pattern_quiz',
-				description: '青狮头额头的"王"字纹饰，代表了什么寓意？',
-				type: 'question',
-				options: ['驱邪镇煞', '王者之风', '吉祥如意', '风调雨顺'],
-				correctOption: '驱邪镇煞',
-				correctAnswer: '青狮被视为"瑞狮"，额头王字意在驱邪镇煞，保一方平安。'
-			}
-		],
-
-		// --- 互动剧本流程 ---
-		scriptNodes: [
+		// 新增：支持角色分片的剧本系统
+		storylines: {
+			'chen_linger': {
+				characterId: 'chen_linger',
+				startNodeId: 'act2_start', // 对应原剧本的入口
+				nodes: [
 			// 1. 开场观察
 			{
 				id: 'act2_start',
@@ -542,7 +503,34 @@ export const npcs: NPC[] = [
 				avatar: '/static/npcs/chen_shikui.png',
 				content: '这青狮舞传了几百年，驱邪镇煞。你手里的印章，关系着咱们揭阳的根。'
 			}
-		]
+				]
+			}
+		},
+
+		// 通用任务：所有角色都可以访问
+		commonTasks: [
+			{
+				id: 'lion_dance_action',
+				description: '模仿青狮步法：左脚虚点，右拳高举，怒目圆睁',
+				type: 'action',
+				correctOption: '完成动作',
+				actionText: '演练青狮步'
+			},
+			{
+				id: 'lion_pattern_quiz',
+				description: '青狮头额头的"王"字纹饰，代表了什么寓意？',
+				type: 'question',
+				options: ['驱邪镇煞', '王者之风', '吉祥如意', '风调雨顺'],
+				correctOption: '驱邪镇煞',
+				correctAnswer: '青狮被视为"瑞狮"，额头王字意在驱邪镇煞，保一方平安。'
+			}
+		],
+
+		// 保持向后兼容的旧字段（已废弃）
+		/** @deprecated 使用 storylines[characterId].nodes 替代 */
+		scriptNodes: [],
+		/** @deprecated 使用 commonTasks 替代 */
+		tasks: [],
 	},
 	{
 		id: 'su_chaweng',
@@ -564,7 +552,18 @@ export const npcs: NPC[] = [
 				text: '学会斟茶礼节，认识潮汕名茶。'
 			}
 		],
-		tasks: [
+
+		// 新增：支持角色分片的剧本系统（苏茶翁暂无特定剧情，保留向后兼容）
+		storylines: {
+			'default': {
+				characterId: 'default',
+				startNodeId: 'tea_intro',
+				nodes: []
+			}
+		},
+
+		// 通用任务：所有角色都可以访问
+		commonTasks: [
 			{
 				id: 'tea_ceremony',
 				description: '学会"关公巡城""韩信点兵"斟茶礼',
@@ -579,7 +578,11 @@ export const npcs: NPC[] = [
 				correctOption: '凤凰单丛、肉桂、水仙',
 				correctAnswer: '凤凰单丛、肉桂、水仙都是工夫茶常用茶'
 			}
-		]
+		],
+
+		// 保持向后兼容的旧字段（已废弃）
+		/** @deprecated 使用 commonTasks 替代 */
+		tasks: [],
 	},
 	{
 		id: 'zheng_pike',
@@ -601,7 +604,18 @@ export const npcs: NPC[] = [
 				text: '在这里寻找批文残片，拼接出完整的历史记忆。'
 			}
 		],
-		tasks: [
+
+		// 新增：支持角色分片的剧本系统（郑批客暂无特定剧情，保留向后兼容）
+		storylines: {
+			'default': {
+				characterId: 'default',
+				startNodeId: 'qiaopi_intro',
+				nodes: []
+			}
+		},
+
+		// 通用任务：所有角色都可以访问
+		commonTasks: [
 			{
 				id: 'find_fragments',
 				description: '在文物馆找到3块批文残片',
@@ -614,7 +628,11 @@ export const npcs: NPC[] = [
 				type: 'puzzle',
 				correctOption: '正确拼接'
 			}
-		]
+		],
+
+		// 保持向后兼容的旧字段（已废弃）
+		/** @deprecated 使用 commonTasks 替代 */
+		tasks: [],
 	},
 	{
 		id: 'li_chengshou',
@@ -636,7 +654,18 @@ export const npcs: NPC[] = [
 				text: '需要集齐前四枚印章，并通过考验才能获得老爷保号章。'
 			}
 		],
-		tasks: [
+
+		// 新增：支持角色分片的剧本系统（李城守暂无特定剧情，保留向后兼容）
+		storylines: {
+			'default': {
+				characterId: 'default',
+				startNodeId: 'gate_intro',
+				nodes: []
+			}
+		},
+
+		// 通用任务：所有角色都可以访问
+		commonTasks: [
 			{
 				id: 'drum_declaration',
 				description: '登上进贤门击鼓明志（喊出"守护文脉，老爷保号"）',
@@ -657,7 +686,11 @@ export const npcs: NPC[] = [
 				type: 'item_check',
 				correctOption: '展示印章'
 			}
-		]
+		],
+
+		// 保持向后兼容的旧字段（已废弃）
+		/** @deprecated 使用 commonTasks 替代 */
+		tasks: [],
 	},
 	// ... 前面是林文渊、陈狮魁等 ...
 
@@ -673,12 +706,12 @@ export const npcs: NPC[] = [
 		personality: '伪善、狡诈',
 		sealId: 'fake_seal', // 伪造的印章
 
-		// 兼容旧字段
-		dialogue: [],
-		tasks: [],
-
-		// --- 互动剧本流程 (终局) ---
-		scriptNodes: [
+		// 新增：支持角色分片的剧本系统
+		storylines: {
+			'chen_linger': {
+				characterId: 'chen_linger',
+				startNodeId: 'act3_start', // 对应原剧本的入口
+				nodes: [
 			// 1. 决战开场
 			{
 				id: 'act3_start',
@@ -809,6 +842,16 @@ export const npcs: NPC[] = [
 				content: '火盆里的纸张化为灰烬。线索断了...',
 				endingId: 'ending_bad'
 			}
-		]
+				]
+			}
+		},
+
+		// 兼容旧字段（已废弃）
+		dialogue: [],
+		commonTasks: [],
+		/** @deprecated 使用 storylines[characterId].nodes 替代 */
+		scriptNodes: [],
+		/** @deprecated 使用 commonTasks 替代 */
+		tasks: [],
 	}
 ]

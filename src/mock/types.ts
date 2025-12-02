@@ -1,6 +1,35 @@
 // 游戏数据类型定义
 // 支持多城市架构：揭阳、潮州、汕头
 
+// 新增：角色剧本包接口
+export interface StorylinePackage {
+	characterId: string // 角色ID，如 'chen_linger'
+	startNodeId: string // 入口节点ID
+	nodes: ScriptNode[] // 对话树节点
+	privateTasks?: any[] // 角色专属任务（可选）
+}
+
+// 新增：世界状态覆写条件接口
+export interface OverrideCondition {
+	requiredSeals?: string[] // 需要的印章
+	requiredLevel?: number // 需要的等级
+	requiredFlags?: string[] // 需要的标记
+}
+
+// 新增：世界状态覆写接口
+export interface WorldOverride {
+	id: string
+	condition: OverrideCondition
+	poiMapping: Record<string, string> // POI_ID -> NPC_ID 的映射
+	environmentChanges?: { bgImage?: string; bgm?: string } // 环境变化（可选）
+}
+
+// 新增：角色世界状态接口
+export interface CharacterWorldState {
+	characterId: string
+	overrides: WorldOverride[]
+}
+
 export interface Character {
 	id : string
 	name : string
@@ -31,11 +60,10 @@ export interface NPC {
 	description : string
 	personality : string
 	sealId : string
-	dialogue : Array<{
-		id : string
-		text : string
-	}>
-	tasks : Array<{
+
+	// 新增字段：支持角色分片的剧本系统
+	storylines: Record<string, StorylinePackage> // 角色ID -> 剧本包的映射
+	commonTasks?: Array<{
 		id : string
 		description : string
 		type : string
@@ -43,8 +71,27 @@ export interface NPC {
 		options ?: string[]
 		actionText ?: string
 		correctAnswer ?: string
+	}> // 通用任务，所有角色都可访问
+	defaultStoryline?: StorylinePackage // 默认剧本，当没有角色特定剧本时使用
+
+	// 旧字段：标记为可选或已废弃，以防数据迁移期间出现错误
+	/** @deprecated 使用 storylines[characterId].nodes 替代 */
+	scriptNodes?: ScriptNode[] // 交互式叙事节点（已废弃）
+	/** @deprecated 使用 commonTasks 替代 */
+	tasks?: Array<{
+		id : string
+		description : string
+		type : string
+		correctOption : string
+		options ?: string[]
+		actionText ?: string
+		correctAnswer ?: string
+	}> // 任务列表（已废弃）
+
+	dialogue : Array<{
+		id : string
+		text : string
 	}>
-	scriptNodes ?: ScriptNode[] // 新增交互式叙事节点
 }
 
 export interface POI {

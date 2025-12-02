@@ -5,7 +5,10 @@
       "Bash(git commit:*)",
       "Bash(npm run type-check:*)",
       "Bash(npx vue-tsc:*)",
-      "Bash(npx tsc --noEmit --skipLibCheck)"
+      "Bash(npx tsc --noEmit --skipLibCheck)",
+      "Bash(npm run dev:h5:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:h5:*)"
     ],
     "deny": [],
     "ask": []

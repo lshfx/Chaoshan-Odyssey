@@ -38,58 +38,13 @@
 	import type { NPC, ScriptNode, StoryEnding } from '../../mock/types'
 	import StoryDialogue from '../../components/StoryDialogue.vue'
 
-	// 🎭 故事结局数据字典
-	const STORY_ENDINGS : Record<string, StoryEnding> = {
-		ending_perfect: {
-			id: 'ending_perfect',
-			characterId: 'chen_linger',
-			type: 'perfect',
-			title: '完美结局：真相大白',
-			achievement: '真相守护者',
-			description: '成功揭露了蔡福生的真面目，找回了失落的《护卫日志》。百年的冤案终于昭雪，揭阳古城的文脉得以完整传承。',
-			background: '经过一番智斗，陈灵儿不仅保护了珍贵的印章，更重要的是还原了历史的真相。蔡福生的阴谋被彻底粉碎，而那本记录着家族荣耀与责任的《护卫日志》重见天日。揭阳的文脉得以完整传承，你的名字将永远铭记在这座古城的历史中。',
-			imageUrl: '/static/endings/perfect.png',
-			musicUrl: '/static/audio/ending_perfect.mp3',
-			conditions: {
-				minCourage: 1,
-				minClue: 2,
-				minIntimacy: 0
-			}
-		},
-		ending_normal: {
-			id: 'ending_normal',
-			characterId: 'chen_linger',
-			type: 'normal',
-			title: '普通结局：虽胜犹憾',
-			achievement: '古城守夜人',
-			description: '蔡福生被捕，但《护卫日志》下落不明。虽然守护了印章，但当年的真相可能永远埋藏在了历史的尘埃中。',
-			background: '虽然成功阻止了蔡福生的恶行，但那本承载着真相的《护卫日志》在混乱中被焚毁。你守护了揭阳的文化遗产，却失去了揭开全部真相的机会。或许，有些故事注定要带着遗憾继续书写。你成为了这座古城新的守夜人，默默守护着那些不为人知的秘密。',
-			imageUrl: '/static/endings/normal.png',
-			musicUrl: '/static/audio/ending_normal.mp3',
-			conditions: {
-				minCourage: 0,
-				minClue: 0,
-				minIntimacy: 0
-			}
-		},
-		ending_bad: {
-			id: 'ending_bad',
-			characterId: 'chen_linger',
-			type: 'bad',
-			title: '悲剧结局：线索断绝',
-			achievement: '雨夜孤影',
-			description: '关键证据被毁，唯一的线索化为灰烬。你虽然得到了印章，但心中的谜团将永远无法解开。',
-			background: '在那个雨夜，眼看着蔡福生将《护卫日志》投入烈火，所有的线索都化为了灰烬。虽然你成功保护了印章的安全，但那个困扰你多年的谜团却永远失去了答案。从此，每当雨夜降临，你都会独自站在揭阳古城的屋檐下，凝望着那片埋葬真相的废墟，心中留下永远的遗憾。',
-			imageUrl: '/static/endings/bad.png',
-			musicUrl: '/static/audio/ending_bad.mp3',
-			conditions: {
-				minCourage: -1,
-				minClue: 0,
-				minIntimacy: -1
-			}
-		}
-	}
+	// 🌟 引入新的世界状态系统
+	import { resolveNpcId } from '../../mock/world_states'
 
+	// 🎭 引入抽离的结局数据
+	import { storyEndings } from '../../mock/endings'
+
+	
 	// Store
 	const gameStore = useGameStore()
 
@@ -178,8 +133,19 @@
 	const findNextNode = (nextId : string) : ScriptNode | null => {
 		if (!currentNPC.value) return null
 
-		const scriptNodes = currentNPC.value.scriptNodes || []
-		return scriptNodes.find(node => node.id === nextId) || null
+		// 🌟 根据当前用户获取对应的剧本包
+		const currentUserId = gameStore.currentUser?.id || 'default'
+		const storyline = currentNPC.value.storylines?.[currentUserId] || currentNPC.value.defaultStoryline
+
+		if (storyline) {
+			// 使用新的剧本系统
+			const nodes = storyline.nodes || []
+			return nodes.find(node => node.id === nextId) || null
+		} else {
+			// 回退到旧的scriptNodes（向后兼容）
+			const scriptNodes = currentNPC.value.scriptNodes || []
+			return scriptNodes.find(node => node.id === nextId) || null
+		}
 	}
 
 	// 数据转换函数：将ScriptNode转换为StoryDialogue所需格式
@@ -189,9 +155,39 @@
 		// 1. 映射 speakerType
 		if (node.type === 'task') {
 			newNode.speakerType = 'task'
-			// 2. 注入 task 数据
-			if (node.taskId && currentNPC.value?.tasks) {
-				newNode.task = currentNPC.value.tasks.find(t => t.id === node.taskId)
+				// 2. 注入 task 数据 - 支持新的任务系统，按优先级查找
+			if (node.taskId) {
+				const currentUserId = gameStore.currentUser?.id || 'default'
+				const storyline = currentNPC.value?.storylines?.[currentUserId]
+
+				// 优先级1: 从当前角色的专属任务池中查找
+				if (storyline?.privateTasks) {
+					newNode.task = storyline.privateTasks.find(t => t.id === node.taskId)
+					if (newNode.task) {
+						console.log(`✅ 从专属任务池找到任务: ${node.taskId}`)
+					}
+				}
+
+				// 优先级2: 从NPC的通用任务池中查找
+				if (!newNode.task && currentNPC.value?.commonTasks) {
+					newNode.task = currentNPC.value.commonTasks.find(t => t.id === node.taskId)
+					if (newNode.task) {
+						console.log(`🔄 从通用任务池找到任务: ${node.taskId}`)
+					}
+				}
+
+				// 优先级3: 回退到旧的 tasks 字段（向后兼容）
+				if (!newNode.task && currentNPC.value?.tasks) {
+					newNode.task = currentNPC.value.tasks.find(t => t.id === node.taskId)
+					if (newNode.task) {
+						console.log(`⚠️ 从旧任务池找到任务: ${node.taskId}`)
+					}
+				}
+
+				// 如果所有地方都没找到，记录警告
+				if (!newNode.task) {
+					console.warn(`❌ 未找到任务: ${node.taskId}`)
+				}
 			}
 		} else {
 			// 普通的 speakerType 映射逻辑
@@ -205,8 +201,8 @@
 		}
 
 		// 🎭 3. 注入结局数据 - 关键修复
-		if (node.endingId && STORY_ENDINGS[node.endingId]) {
-			newNode.ending = STORY_ENDINGS[node.endingId]
+		if (node.endingId && storyEndings[node.endingId]) {
+			newNode.ending = storyEndings[node.endingId]
 			console.log('🎭 注入结局数据:', node.endingId, '->', newNode.ending.title)
 		}
 
@@ -244,15 +240,30 @@
 		const randomIndex = Math.floor(Math.random() * completedNodes.length)
 		const selectedNode = completedNodes[randomIndex]
 
-		console.log('从', completedNodes.length, '个已完成节点中随机选择:', selectedNode.id)
-		return selectedNode
+		console.log('从', completedNodes.length, '个已完成节点中随机选择:', selectedNode?.id)
+		return selectedNode || null
 	}
 
 	// 3. 最后定义主逻辑：构建初始对话脚本
 	const buildInitialScript = () => {
 		if (!currentNPC.value) return
 
-		const scriptNodes = currentNPC.value.scriptNodes || []
+		// 🌟 根据当前用户获取对应的剧本包
+		const currentUserId = gameStore.currentUser?.id || 'default'
+		const storyline = currentNPC.value.storylines?.[currentUserId] || currentNPC.value.defaultStoryline
+
+		let scriptNodes: ScriptNode[] = []
+
+		if (storyline) {
+			// 使用新的剧本系统
+			scriptNodes = storyline.nodes || []
+			console.log('🌟 使用角色专属剧本:', currentUserId, '入口节点:', storyline.startNodeId)
+		} else {
+			// 回退到旧的scriptNodes（向后兼容）
+			scriptNodes = currentNPC.value.scriptNodes || []
+			console.log('⚠️ 回退到旧数据结构，使用scriptNodes:', scriptNodes.length)
+		}
+
 		if (scriptNodes.length === 0) return
 
 		let startNode : ScriptNode | null = null
@@ -277,9 +288,16 @@
 			}
 		}
 
+		// 如果有剧本包，优先使用startNodeId；否则使用第一个节点
+		if (!startNode && storyline?.startNodeId) {
+			startNode = scriptNodes.find(node => node.id === storyline.startNodeId) || scriptNodes[0] || null
+			if (startNode) console.log('🌟 使用剧本包入口节点:', storyline.startNodeId)
+		}
+
 		// 最后的兜底：从头开始
 		if (!startNode) {
-			startNode = scriptNodes[0]
+			startNode = scriptNodes[0] || null
+			console.log('🌟 使用默认第一个节点')
 		}
 
 		if (!startNode) return
@@ -315,28 +333,15 @@
 			return
 		}
 
-		// 🕵️‍♀️ 开始：动态NPC覆盖机制 - Chen Linger的终局对决
-		let targetNpcId = npcId
+		// 🕵️‍♀️ 使用新的世界状态系统解析NPC ID
+		const targetNpcId = resolveNpcId(
+			poiId || npcId, // poiId: string
+			npcId, // defaultNpcId: string
+			gameStore.currentUser?.id, // characterId?: string
+			gameStore.inventory.seals || [] // userInventory: string[]
+		)
 
-		// 条件检查
-		const isChenLinger = gameStore.currentUser?.id === 'chen_linger'
-		const isNotCaiFusheng = gameStore.currentUser?.id !== 'cai_fusheng' // 防止蔡福生打自己
-		const isAtJinxianGate = targetNpcId === 'li_chengshou' || poiId === 'jinxian_gate'
-
-		// 检查是否进入终局阶段 - 拥有前面2个印章表示剧情进展到终局
-		const seals = gameStore.inventory.seals || []
-		const hasSealOne = seals.includes('seal_one')
-		const hasSealTwo = seals.includes('seal_two')
-		const isReadyForFinale = hasSealOne && hasSealTwo
-
-		// 执行覆盖逻辑
-		if (isChenLinger && isNotCaiFusheng && isAtJinxianGate && isReadyForFinale) {
-			targetNpcId = 'cai_fusheng'
-			console.log('⚡ 触发终局对决：陈灵儿 vs 蔡福生')
-			console.log('📍 位置：进贤门 (jinxian_gate)')
-			console.log('📜 剧情进度：已获得前2枚印章，触发最终BOSS战')
-			console.log('🔄 NPC覆盖：li_chengshou -> cai_fusheng')
-		}
+		console.log('🔄 NPC解析:', npcId, '->', targetNpcId, '(角色:', gameStore.currentUser?.id, ')')
 
 		// 从jieyang.npcs数组中查找对应的NPC（使用可能被覆盖的targetNpcId）
 		currentNPC.value = jieyang.npcs.find((npc : NPC) => npc.id === targetNpcId) || null
