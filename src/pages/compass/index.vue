@@ -126,6 +126,15 @@ const smoothHeading = ref(0)
 const lastUpdateTime = ref(0)
 const compassUpdateInterval = 100
 
+// 罗盘变化回调函数
+const compassChangeCallback = (res: any) => {
+  const newRawHeading = Math.round(res.direction)
+  rawHeading.value = newRawHeading
+
+  const smoothedValue = smoothCompassData(newRawHeading)
+  throttledUpdateUI()
+}
+
 // UI状态
 const showTargetModal = ref(false)
 const showArrivalModal = ref(false)
@@ -349,13 +358,7 @@ const startCompass = () => {
 }
 
 const startCompassListening = () => {
-  uni.onCompassChange((res) => {
-    const newRawHeading = Math.round(res.direction)
-    rawHeading.value = newRawHeading
-
-    const smoothedValue = smoothCompassData(newRawHeading)
-    throttledUpdateUI()
-  })
+  uni.onCompassChange(compassChangeCallback)
 
   uni.startCompass({
     success: () => {
@@ -394,7 +397,7 @@ const stopCompass = () => {
   }
 
   if (uni.offCompassChange) {
-    uni.offCompassChange()
+    uni.offCompassChange(compassChangeCallback)
   }
 }
 

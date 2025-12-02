@@ -277,8 +277,7 @@
 		console.log('距离POI:', distance, '米')
 
 		// 开发环境调试特权：允许直接进入
-		const isDevEnvironment = process.env.NODE_ENV === 'development' ||
-			uni.getSystemInfoSync().platform === 'devtools'
+		const isDevEnvironment = uni.getSystemInfoSync().platform === 'devtools'
 
 		if (isDevEnvironment) {
 			console.log('开发环境：直接进入AR模式')

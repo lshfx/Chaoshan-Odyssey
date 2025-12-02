@@ -36,13 +36,13 @@
         <view v-else class="inventory-grid">
           <view
             v-for="item in currentItems"
-            :key="item.id"
+            :key="item?.id"
             class="grid-item"
             @tap="showItemDetail(item)"
           >
             <view class="item-icon-container">
               <image
-                v-if="item.icon"
+                v-if="item?.icon"
                 :src="item.icon"
                 class="item-icon"
                 mode="aspectFit"
@@ -51,7 +51,7 @@
                 {{ activeTab === 'clues' ? '📜' : '🗝️' }}
               </text>
             </view>
-            <text class="item-name">{{ item.name }}</text>
+            <text class="item-name">{{ item?.name }}</text>
           </view>
         </view>
       </scroll-view>

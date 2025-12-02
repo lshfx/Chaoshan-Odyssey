@@ -5,24 +5,24 @@
 		<view v-if="currentLine?.speakerType === 'narrator'" class="dialogue-overlay narrator-overlay" />
 
 		<view v-if="showTask" class="task-layer" @tap.stop>
-			<TaskPanel :task="currentLine.task" @complete="handleTaskComplete" />
+			<TaskPanel :task="currentLine.task!" @complete="handleTaskComplete" />
 		</view>
 
 		<view v-else-if="showTrueEndingCard" class="ending-layer" @tap.stop>
-			<EndingCard :ending="currentLine.ending" @close="handleEndingClose" />
+			<EndingCard :ending="currentLine.ending!" @close="handleEndingClose" />
 		</view>
 
 		<view v-else class="dialogue-layer">
-			<ChoicePanel v-if="hasOptions" :options="currentLine.options" @select="handleOptionSelect" />
+			<ChoicePanel v-if="hasOptions" :options="currentLine.options!" @select="handleOptionSelect" />
 
-			<DialogueBox 
-				v-if="!hasOptions" 
-				:key="currentLine?.id" 
+			<DialogueBox
+				v-if="!hasOptions"
+				:key="currentLine?.id"
 				:content="currentLine?.content || ''"
-				:name="currentLine?.name || ''" 
+				:name="currentLine?.name || ''"
 				:avatar="currentLine?.avatar"
-				:speaker-type="currentLine?.speakerType || 'narrator'" 
-				@next="handleDialogueTap" 
+				:speaker-type="(currentLine?.speakerType as 'narrator' | 'player' | 'npc') || 'narrator'"
+				@next="handleDialogueTap"
 			/>
 		</view>
 
@@ -63,6 +63,9 @@
 		options ?: DialogueOption[]
 		task ?: Task
 		ending ?: StoryEnding
+		type ?: 'end'
+		nextId ?: string
+		failId ?: string
 	}
 
 	// Props 定义

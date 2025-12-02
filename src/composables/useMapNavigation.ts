@@ -93,8 +93,8 @@ export function useMapNavigation() {
         method: 'GET'
       })
 
-      if (response.statusCode === 200 && typeof response.data === 'object' && response.data.status === 0) {
-        return response.data.result as RouteData
+      if (response.statusCode === 200 && typeof response.data === 'object' && response.data !== null && 'status' in response.data && response.data.status === 0) {
+        return (response.data as any).result as RouteData
       } else {
         console.error('腾讯地图API调用失败:', response.data)
         return null

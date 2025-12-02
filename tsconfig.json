@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig.json",
   "extends": "@vue/tsconfig/tsconfig.json",
   "compilerOptions": {
     "sourceMap": true,
@@ -7,7 +8,21 @@
       "@/*": ["./src/*"]
     },
     "lib": ["esnext", "dom"],
-    "types": ["@dcloudio/types"]
+    "types": ["@dcloudio/types"],
+    "strict": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "moduleResolution": "node",
+    "target": "esnext",
+    "module": "esnext",
+
+    // --- 新增/修改的部分 ---
+    // 启用新的模块语法规则，替代已删除的 importsNotUsedAsValues
+    "verbatimModuleSyntax": true,
+    // ----------------------
+
+    // 你原来的配置
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"]
 }
