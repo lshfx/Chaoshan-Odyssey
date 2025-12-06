@@ -138,24 +138,22 @@ defineExpose({
   background: rgba(0, 0, 0, 0.3); // 半透明背景，区分立绘和文本框
 }
 
-// 头像 - 严格尺寸和位置
+// 头像 - 纯净立绘效果
 .avatar {
   position: absolute;
-  bottom: 240rpx; // 站在文本框顶部
-  z-index: 5; // 在文本框后面，看起来像从框里出来
-  height: 350rpx; // 固定最大高度
+  bottom: 220rpx; // 稍微下沉，增加景深感
+  z-index: 5; // 在文本框后面
+  height: 350rpx; // 固定高度
   max-width: 300rpx; // 限制最大宽度
-  border-radius: 15rpx 15rpx 0 0;
-  box-shadow: 0 -8rpx 25rpx rgba(0, 0, 0, 0.3);
+  filter: drop-shadow(0 0 10rpx rgba(0, 0, 0, 0.3)); // 沿像素边缘的阴影
+  transition: filter 0.3s ease; // 平滑过渡效果
 
   &.npc {
     left: 40rpx; // 固定左边位置
-    border-right: 4rpx solid #e74c3c;
   }
 
   &.player {
     right: 40rpx; // 固定右边位置
-    border-left: 4rpx solid #3498db;
   }
 }
 
@@ -267,6 +265,7 @@ defineExpose({
   .avatar {
     height: 280rpx;
     max-width: 240rpx;
+    bottom: 200rpx; // 同样下沉，保持比例
 
     &.npc {
       left: 30rpx;
