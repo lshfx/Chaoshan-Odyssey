@@ -524,6 +524,7 @@ export const useGameStore = defineStore('game', () => {
   const getMapMarkers = () => {
     return currentCityPOIs.value.map(poi => {
       const isUnlocked = missionStatus.value.unlockedPOIs.includes(poi.id)
+      const isCompleted = completedPoiIds.value.includes(poi.id)  // ✅ 使用完成状态
       const isCurrentObjective = missionStatus.value.currentObjective?.includes(poi.name)
 
       return {
@@ -531,10 +532,12 @@ export const useGameStore = defineStore('game', () => {
         latitude: poi.latitude,
         longitude: poi.longitude,
         iconPath: isCurrentObjective
-          ? '/static/map-marker-active.png'  // 红色高亮
+          ? '/static/markers/mission-marker.png'  // 红色高亮（当前目标）
+          : isCompleted
+            ? '/static/my-location.png'  // 使用现有蓝色图标表示已完成
           : isUnlocked
-            ? '/static/map-marker-unlocked.png'  // 蓝色已解锁
-            : '/static/map-marker-locked.png',   // 灰色未解锁
+            ? '/static/markers/mission-marker.png'  // 黄色已解锁但未完成（暂时复用）
+            : '/static/my-location.png',   // 灰色未解锁（暂时复用）
         width: 30,
         height: 30,
         callout: {
@@ -543,7 +546,10 @@ export const useGameStore = defineStore('game', () => {
           textAlign: 'center',
           fontSize: 12,
           borderRadius: 4,
-          bgColor: isCurrentObjective ? '#ffebee' : '#f5f5f5',
+          bgColor: isCurrentObjective ? '#ffebee' :
+                   isCompleted ? '#e3f2fd' :      // 蓝色背景（已完成）
+                   isUnlocked ? '#fff8e1' :       // 黄色背景（已解锁）
+                   '#f5f5f5',                    // 灰色背景（未解锁）
           padding: 4
         }
       }

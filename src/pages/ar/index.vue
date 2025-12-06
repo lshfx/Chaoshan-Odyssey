@@ -495,17 +495,23 @@
 
 		// 显示完成提示
 		uni.showToast({
-			title: '探索完成！',
+			title: '剧情结束',
 			icon: 'success',
 			duration: 1500
 		})
 
-		// 延迟返回
 		setTimeout(() => {
-			// 触发任务完成逻辑
-			if (currentNPC.value) {
-				console.log('任务完成，NPC:', currentNPC.value.id)
-				// 这里可以添加任务完成的逻辑
+			// 🚨 核心修复：更新全局状态
+			// 如果当前有 NPC 且有 POI ID，标记该 POI 为已完成
+			if (currentNPC.value && routeParams.value.poiId) {
+				console.log('✅ 提交任务状态:', routeParams.value.poiId)
+
+				// 1. 完成当前 POI (让地图变蓝)
+				gameStore.completeMission(routeParams.value.poiId)
+
+				// 2. 如果是结局 NPC (如蔡福生)，确保保存了 NPC 进度以防回滚
+				// 使用特定的结束标记，比如 'completed_ending'
+				gameStore.saveNPCProgress(currentNPC.value.id, 'completed_ending')
 			}
 
 			uni.navigateBack()
