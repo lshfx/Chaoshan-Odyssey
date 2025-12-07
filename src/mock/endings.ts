@@ -36,6 +36,22 @@ export const storyEndings: Record<string, StoryEnding> = {
 			minIntimacy: 0
 		}
 	},
+	ending_good: {
+		id: 'ending_good',
+		characterId: 'chen_linger',
+		type: 'perfect',
+		title: '良好结局：正义得彰',
+		achievement: '正义执行者',
+		description: '成功揭露蔡福生，虽然部分证据丢失，但主要目标达成。真相虽不完整，但正义得到伸张。',
+		background: '经过一番努力，你成功揭开了蔡福生的真面目，让他为自己的行为付出了代价。虽然一些关键证据在追捕过程中遗失，但重要的真相已经水落石出。你不仅守护了揭阳的文化遗产，也为父母找到了迟来的正义。这个结局或许不够完美，但已经是你在当时条件下能争取到的最好结果。',
+		imageUrl: '/static/endings/good.png',
+		musicUrl: '/static/audio/ending_good.mp3',
+		conditions: {
+			minCourage: 1,
+			minClue: 1,
+			minIntimacy: 1
+		}
+	},
 	ending_bad: {
 		id: 'ending_bad',
 		characterId: 'chen_linger',

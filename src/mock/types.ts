@@ -194,7 +194,7 @@ export interface StoryEnding {
 
 export interface ScriptNode {
   id: string
-  type: 'normal' | 'choice' | 'end' | 'task' // Added 'task'
+  type: 'normal' | 'choice' | 'end' | 'task' | 'check' // Added 'task' and 'check'
   speaker?: string
   avatar?: string
   content?: string
@@ -203,6 +203,11 @@ export interface ScriptNode {
   taskId?: string // Added for task linking
   endingId?: string // 结局ID，用于type为'end'的节点
   trigger?: string
+  condition?: { // ✨ 判定条件
+    courage?: number;
+    clue?: number;
+    intimacy?: number;
+  };
   options?: Array<{
     label: string
     text?: string

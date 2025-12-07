@@ -774,7 +774,7 @@ export const npcs: NPC[] = [
             nextId: 'act3_choice_final',
           },
 
-          // 2. 最终审判抉择 (决定结局走向)
+          // 2. 最终审判抉择 (策略选择，无属性加成)
           {
             id: 'act3_choice_final',
             type: 'choice',
@@ -784,34 +784,110 @@ export const npcs: NPC[] = [
               {
                 label: '雷霆一击 (强行制服)',
                 text: '（趁他喝茶，直接掀翻桌子，强行扯下他的手套！）别装了！让我看看你的左手！',
-                nextId: 'act3_branch_a',
-                // 🌟 策略：给予大量属性加成，确保触发完美结局 (前提是之前基础属性不为负)
-                effects: { courage: 10, clue: 5 },
+                nextId: 'act3_check_courage',
+                // 🚨 移除作弊式加成，仅根据玩家历史积累判定
+                effects: { courage: 1, clue: 0 }, // 小幅调整，不影响最终判定
               },
               {
                 label: '言语周旋 (智取)',
                 text: '蔡老板，听说您这手套是西洋货？不知能否摘下来让我开开眼？',
-                nextId: 'act3_branch_b',
-                // 🌟 策略：加线索但没加果敢，容易触发普通结局
-                effects: { clue: 5, courage: 0 },
+                nextId: 'act3_check_clue',
+                // 🚨 移除作弊式加成，仅根据玩家历史积累判定
+                effects: { clue: 1, intimacy: 1 }, // 小幅调整，不影响最终判定
               },
               {
-                label: '暗中观察 (犹豫)',
-                text: '（不出声，等他自己露出马脚...）',
-                nextId: 'act3_branch_c',
-                // 🌟 策略：扣减果敢，强制触发悲剧结局
-                effects: { courage: -10 },
+                label: '暗中观察 (等待时机)',
+                text: '（不出声，仔细观察他的每一个动作，寻找破绽...）',
+                nextId: 'act3_check_intimacy',
+                // 🚨 移除惩罚性扣减，仅根据玩家历史积累判定
+                effects: { intimacy: 1 }, // 小幅调整，不影响最终判定
               },
             ],
           },
 
-          // --- 分支 A：雷霆一击 (完美结局路径) ---
+          // --- 属性判定节点 ---
+          // 果敢判定节点：需要 courage >= 2
+          {
+            id: 'act3_check_courage',
+            type: 'check',
+            speaker: '系统',
+            content: '【果敢判定】基于你之前的果敢表现...',
+            condition: { courage: 2 },
+            nextId: 'act3_success_courage',
+            failId: 'act3_fail_courage',
+          },
+          {
+            id: 'act3_success_courage',
+            type: 'normal',
+            speaker: '系统',
+            content: '【判定成功】你动作果决，蔡福生来不及反应！',
+            nextId: 'act3_branch_a',
+          },
+          {
+            id: 'act3_fail_courage',
+            type: 'normal',
+            speaker: '系统',
+            content: '【判定失败】蔡福生反应很快，侧身躲过了你的攻击！',
+            nextId: 'act3_partial_success',
+          },
+
+          // 线索判定节点：需要 clue >= 2
+          {
+            id: 'act3_check_clue',
+            type: 'check',
+            speaker: '系统',
+            content: '【线索判定】基于你收集的线索情报...',
+            condition: { clue: 2 },
+            nextId: 'act3_success_clue',
+            failId: 'act3_fail_clue',
+          },
+          {
+            id: 'act3_success_clue',
+            type: 'normal',
+            speaker: '系统',
+            content: '【判定成功】你言语犀利，句句切中要害！',
+            nextId: 'act3_branch_b_success',
+          },
+          {
+            id: 'act3_fail_clue',
+            type: 'normal',
+            speaker: '系统',
+            content: '【判定失败】蔡福生警惕地躲开了你的试探。',
+            nextId: 'act3_partial_success',
+          },
+
+          // 亲密度判定节点：需要 intimacy >= 1
+          {
+            id: 'act3_check_intimacy',
+            type: 'check',
+            speaker: '系统',
+            content: '【洞察判定】基于你的人际关系和观察力...',
+            condition: { intimacy: 1 },
+            nextId: 'act3_success_intimacy',
+            failId: 'act3_fail_intimacy',
+          },
+          {
+            id: 'act3_success_intimacy',
+            type: 'normal',
+            speaker: '系统',
+            content: '【判定成功】你敏锐地捕捉到了他袖口的细节！',
+            nextId: 'act3_branch_c_success',
+          },
+          {
+            id: 'act3_fail_intimacy',
+            type: 'normal',
+            speaker: '系统',
+            content: '【判定失败】蔡福生察觉到了你的注视，变得更加谨慎。',
+            nextId: 'act3_partial_success',
+          },
+
+          // --- 成功分支 ---
+          // 雷霆一击成功路径
           {
             id: 'act3_branch_a',
             type: 'normal',
             speaker: '系统',
-            content:
-              '【判定：大成功】你动作极快，蔡福生来不及反应，手套脱落——赫然是六指！而且手背上有一道狰狞的狮纹伤疤！',
+            content: '手套脱落——赫然是六指！手背上有狰狞的狮纹伤疤！',
             nextId: 'act3_branch_a_2',
           },
           {
@@ -819,72 +895,74 @@ export const npcs: NPC[] = [
             type: 'normal',
             speaker: '陈灵儿',
             avatar: '/static/avatars/chen_linger.png',
-            content:
-              '六指、狮纹、假印章！蔡福生，当年谋害我父母的掠夺者就是你家先人！人赃并获，你还有什么好说的！',
+            content: '六指、狮纹、假印章！蔡福生，人赃并获！',
             nextId: 'act3_ending_perfect',
           },
-          // 这个 End 节点会触发 handleDialogueEnd -> checkEnding() -> 完美结局
+
+          // 言语周旋成功路径
+          {
+            id: 'act3_branch_b_success',
+            type: 'normal',
+            speaker: '蔡福生',
+            avatar: '/static/npcs/cai_fusheng_boss.png',
+            content: '（脸色微变）陈捕快说笑了...他下意识地摸了摸左手袖口。',
+            nextId: 'act3_ending_good',
+          },
+
+          // 暗中观察成功路径
+          {
+            id: 'act3_branch_c_success',
+            type: 'normal',
+            speaker: '系统',
+            content: '你注意到他袖口下有一道狰狞的伤疤轮廓！这是决定性的证据！',
+            nextId: 'act3_ending_good',
+          },
+
+          // --- 部分成功分支 ---
+          {
+            id: 'act3_partial_success',
+            type: 'normal',
+            speaker: '系统',
+            content: '虽然行动不算完美，但你还是获得了一些线索。蔡福生被制服，但部分证据丢失。',
+            nextId: 'act3_ending_normal',
+          },
+
+          // --- 失败分支 ---
+          {
+            id: 'act3_ending_bad',
+            type: 'normal',
+            speaker: '系统',
+            content: '蔡福生销毁了关键证据后逃脱。你的努力付诸东流...',
+            nextId: 'act3_ending_bad_final',
+          },
+
+          // --- 结局节点 ---
           {
             id: 'act3_ending_perfect',
             type: 'end',
             speaker: '系统',
-            content:
-              '蔡福生面如死灰，瘫软在地。那一包还没来得及销毁的迷药和藏在暗格里的《护卫日志》完好无损...',
+            content: '完美！人赃并获，关键证据《护卫日志》完好无损。真相大白！',
             endingId: 'ending_perfect',
           },
-
-          // --- 分支 B：言语周旋 (普通结局路径) ---
           {
-            id: 'act3_branch_b',
-            type: 'normal',
-            speaker: '蔡福生',
-            avatar: '/static/npcs/cai_fusheng_boss.png',
-            content:
-              '（警觉地缩回手）陈捕快真会开玩笑，手有旧疾，见不得风。我还有事，失陪了。',
-            nextId: 'act3_branch_b_2',
-          },
-          {
-            id: 'act3_branch_b_2',
-            type: 'normal',
+            id: 'act3_ending_good',
+            type: 'end',
             speaker: '系统',
-            content:
-              '他试图逃跑，却被门口的守卫拦住。虽然抓住了人，但他趁机把口袋里的东西丢进了井里。',
-            nextId: 'act3_ending_normal',
+            content: '成功！蔡福生被捕，虽然部分证据丢失，但主要目标达成。',
+            endingId: 'ending_good',
           },
-          // 这个 End 节点会触发 checkEnding() -> 普通结局
           {
             id: 'act3_ending_normal',
             type: 'end',
             speaker: '系统',
-            content:
-              '蔡福生被捕，但他死咬着不松口。关键证据《护卫日志》下落不明...',
+            content: '一般成功。蔡福生被捕，但关键证据下落不明，真相仍有隐晦。',
             endingId: 'ending_normal',
           },
-
-          // --- 分支 C：暗中观察 (悲剧结局路径) ---
           {
-            id: 'act3_branch_c',
-            type: 'normal',
-            speaker: '系统',
-            content:
-              '【判定：失败】蔡福生察觉到了你的视线，嘴角闪过一丝冷笑。他迅速从怀里掏出一本泛黄的笔记，扔进了旁边的火盆！',
-            nextId: 'act3_branch_c_2',
-          },
-          {
-            id: 'act3_branch_c_2',
-            type: 'normal',
-            speaker: '蔡福生',
-            avatar: '/static/npcs/cai_fusheng_boss.png',
-            content:
-              '烧了！都烧了！你爹娘的消息，这辈子你也别想知道！哈哈哈哈！',
-            nextId: 'act3_ending_bad',
-          },
-          // 这个 End 节点会触发 checkEnding() -> 悲剧结局 (因为 courage 被扣成了负数)
-          {
-            id: 'act3_ending_bad',
+            id: 'act3_ending_bad_final',
             type: 'end',
             speaker: '系统',
-            content: '火盆里的纸张化为灰烬。线索断了...',
+            content: '失败。关键证据被销毁，蔡福生逃脱，你的父母之仇可能永远无法得报。',
             endingId: 'ending_bad',
           },
         ],

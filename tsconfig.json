@@ -12,7 +12,7 @@
     "strict": true,
     "skipLibCheck": true,
     "allowJs": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "target": "esnext",
     "module": "esnext",
 
@@ -21,8 +21,8 @@
     "verbatimModuleSyntax": true,
     // ----------------------
 
-    // 你原来的配置
-    "ignoreDeprecations": "5.0"
+    // 处理 TypeScript 6.0+ 弃用警告
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"]
 }

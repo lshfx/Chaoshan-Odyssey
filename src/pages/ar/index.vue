@@ -248,6 +248,55 @@
 	const buildInitialScript = () => {
 		if (!currentNPC.value) return
 
+		// 🚨 1. [新增] 优先检查：是否已达成真结局/剧情完结？
+		const savedProgress = gameStore.getNPCProgress(currentNPC.value.id)
+		if (savedProgress === 'completed_ending') {
+			console.log('检测到该角色剧情已彻底完结，加载随机闲聊节点')
+
+			// 🌟 根据当前用户获取对应的剧本包
+			const currentUserId = gameStore.currentUser?.id || 'default'
+			const storyline = currentNPC.value.storylines?.[currentUserId] || currentNPC.value.defaultStoryline
+
+			// 1. 获取节点池
+			let nodes = storyline?.nodes || currentNPC.value.scriptNodes || []
+
+			// 2. 筛选闲聊节点 (id 包含 'completed_')
+			const chatNodes = nodes.filter(n => n.id && n.id.startsWith('completed_'))
+
+			if (chatNodes.length > 0) {
+				// 3. 随机选择一个
+				const randomNode = chatNodes[Math.floor(Math.random() * chatNodes.length)]
+
+				// 确保节点存在
+				if (randomNode) {
+					console.log('🌟 加载闲聊节点:', randomNode.id)
+
+					// 4. 转换为显示格式 (保持 type='end' 以便点击退出)
+					currentScript.value = [transformNode(randomNode)]
+				} else {
+					// 兜底处理
+					currentScript.value = [transformNode({
+						id: 'default_end',
+						type: 'end',
+						speaker: '系统',
+						content: '（该角色已无更多剧情。）'
+					})]
+				}
+			} else {
+				// 兜底：如果没有配置闲聊节点，才显示默认文本
+				currentScript.value = [transformNode({
+					id: 'default_end',
+					type: 'end',
+					speaker: '系统',
+					content: '（该角色已无更多剧情。）'
+				})]
+			}
+
+			gameStore.currentScript = currentScript.value
+			setTimeout(() => { gameStore.isDialogueVisible = true }, 500)
+			return // 🛑 阻断后续逻辑，直接返回
+		}
+
 		// 🌟 根据当前用户获取对应的剧本包
 		const currentUserId = gameStore.currentUser?.id || 'default'
 		const storyline = currentNPC.value.storylines?.[currentUserId] || currentNPC.value.defaultStoryline
@@ -411,11 +460,62 @@
 			return
 		}
 
-		// 2. 正常选项处理逻辑
+		// 2. 应用选项效果
+		if (option.effects) {
+			if (option.effects.courage) {
+				gameStore.updateStat('courage', option.effects.courage)
+			}
+			if (option.effects.clue) {
+				gameStore.updateStat('clue', option.effects.clue)
+			}
+			if (option.effects.intimacy) {
+				gameStore.updateStat('intimacy', option.effects.intimacy)
+			}
+		}
+
+		// 3. 加载下一个节点并处理
+		loadNextNode(option.nextId)
+	}
+
+	// 🆕 处理属性判定节点
+	const handleCheckNode = (checkNode: ScriptNode) => {
+		console.log('处理属性判定节点:', checkNode.id, checkNode.condition)
+
+		// 使用 Store 的 checkCondition 方法进行判定
+		const conditionMet = gameStore.checkCondition(checkNode.condition || {})
+
+		// 根据判定结果选择下一个节点
+		const nextNodeId = conditionMet ? checkNode.nextId : checkNode.failId
+		if (nextNodeId) {
+			loadNextNode(nextNodeId)
+		} else {
+			console.error('Check node 没有配置跳转节点:', checkNode.id)
+		}
+	}
+
+	// 🆕 加载下一个节点的通用方法
+	const loadNextNode = (nextNodeId: string) => {
 		// 查找下一个节点
-		const nextNode = findNextNode(option.nextId)
+		const nextNode = findNextNode(nextNodeId)
 		if (!nextNode) {
-			console.log('没有找到下一个节点:', option.nextId)
+			console.log('没有找到下一个节点:', nextNodeId)
+			return
+		}
+
+		// 🆕 检查是否是判定节点
+		if (nextNode.type === 'check') {
+			// 先显示判定节点本身
+			const transformedCheckNode = transformNode(nextNode)
+			const newScript = [transformedCheckNode]
+
+			// 更新脚本显示判定内容
+			currentScript.value = newScript
+			gameStore.currentScript = newScript
+
+			// 延迟执行判定，让玩家看到判定内容
+			setTimeout(() => {
+				handleCheckNode(nextNode)
+			}, 2000)
 			return
 		}
 
@@ -425,9 +525,13 @@
 
 		// 如果下一个节点有后续节点且没有选项，继续添加线性节点
 		let currentNode = transformedNextNode
-		while (currentNode.nextId && !currentNode.options) {
+		while (currentNode.nextId && !currentNode.options && currentNode.type !== 'end') {
 			const subsequentNode = findNextNode(currentNode.nextId)
 			if (subsequentNode) {
+				// 🆕 如果遇到判定节点，停止线性加载
+				if (subsequentNode.type === 'check') {
+					break
+				}
 				const transformedSubsequentNode = transformNode(subsequentNode)
 				newScript.push(transformedSubsequentNode)
 				currentNode = transformedSubsequentNode
@@ -512,6 +616,9 @@
 				// 2. 如果是结局 NPC (如蔡福生)，确保保存了 NPC 进度以防回滚
 				// 使用特定的结束标记，比如 'completed_ending'
 				gameStore.saveNPCProgress(currentNPC.value.id, 'completed_ending')
+
+				// 3. 如果是结局NPC，清除导航目标（终局完成）
+				gameStore.clearTargetLocation()
 			}
 
 			uni.navigateBack()
