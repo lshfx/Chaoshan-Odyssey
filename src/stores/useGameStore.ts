@@ -93,53 +93,69 @@ export const useGameStore = defineStore('game', () => {
   // 获取可见的地图标记（基于剧情解锁的POI）
     const visibleMarkers = computed(() => {
       const allPois = currentCityData.value?.pois || []
-      
+
       // ✅ 核心修复：这里必须从 missionStatus.value.unlockedPOIs 读取！
       // 之前的 unlockedPoiIds.value 是旧逻辑遗留的变量，导致新解锁的地点不显示
       const unlockedList = missionStatus.value.unlockedPOIs
-  
+      const completedList = completedPoiIds.value  // 🎨 新增：获取已完成列表
+
       // 过滤出已解锁的POI
       const markers = allPois
         .filter(poi => unlockedList.includes(poi.id))
         .map((poi, index) => {
           // 判断是否是当前导航目标
           const isTarget = targetLocation.value && poi.name === targetLocation.value.name
-  
+          const isCompleted = completedList.includes(poi.id)  // 🎨 新增：判断是否已完成
+
+          // 🎨 图标与尺寸逻辑
+          let iconPath = '/static/markers/mission-marker.png'  // 默认为任务图标(红)
+          let width = 40
+          let height = 40
+          let zIndex = 5
+
+          if (isCompleted) {
+            // ✅ 已完成：变蓝，变小
+            iconPath = '/static/my-location.png'
+            width = 24
+            height = 24
+            zIndex = 1  // 沉底
+          } else {
+            // 🚧 未完成：保持任务图标
+            iconPath = '/static/markers/mission-marker.png'
+            // 如果是当前追踪目标，可以稍微放大
+            if (isTarget) {
+              width = 48
+              height = 48
+              zIndex = 10
+            }
+          }
+
           return {
             id: 900000000 + index, // 唯一的数字 ID
             poiId: String(poi.id), // 原始字符串 ID
             latitude: poi.latitude,
             longitude: poi.longitude,
-            
-            // 图标逻辑
-            iconPath: isTarget 
-              ? '/static/markers/mission-marker.png'  // 🔴 目标图标 (请确保文件存在!)
-              : '/static/my-location.png',            // 🔵 普通图标
-              
-            // 目标点放大
-            width: isTarget ? 40 : 32,
-            height: isTarget ? 40 : 32,
-            
+            iconPath,
+            width,
+            height,
             anchor: { x: 0.5, y: 1 },
-            
+            zIndex,
             // 气泡逻辑
             callout: {
               content: poi.name,
               color: '#FFFFFF',
               fontSize: 12,
               borderRadius: 6,
-              // 目标点红色背景，普通点灰色
-              bgColor: isTarget ? '#FF4444' : '#555555', 
+              // 🎨 已完成蓝底，进行中红底
+              bgColor: isCompleted ? '#2196F3' : '#FF4444',
               padding: 8,
               // 目标点强制显示
               display: 'ALWAYS',
               boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)'
-            },
-            
-            zIndex: isTarget ? 999 : 1
+            }
           }
         })
-  
+
       return markers
     })
 
@@ -351,16 +367,14 @@ export const useGameStore = defineStore('game', () => {
     storyStage.value += 1
     console.log('剧情阶段推进到:', storyStage.value)
 
-    // 3. 解锁下一个POI
-    unlockNextPOI(poiId)
+    // 3. 🚨 [核心修复] 只调用新的智能导航系统，避免状态竞争
+    // checkAndUnlockNextPOI 会处理解锁和导航逻辑
+    checkAndUnlockNextPOI()
 
-    // 4. 更新已解锁POI列表（移除当前POI，添加下一个POI）
-    updateUnlockedPOIs(poiId)
-
-    // 5. 保存进度
+    // 4. 保存进度
     saveProgress()
 
-    // 6. 显示完成提示
+    // 5. 显示完成提示
     const poi = getPOIById(poiId)
     if (poi) {
       console.log('恭喜完成:', poi.name)
@@ -374,7 +388,7 @@ export const useGameStore = defineStore('game', () => {
 
     if (currentIndex !== -1 && currentIndex < allPOIs.length - 1) {
       const nextPOI = allPOIs[currentIndex + 1]
-      if (!unlockedPoiIds.value.includes(nextPOI.id)) {
+      if (nextPOI && !unlockedPoiIds.value.includes(nextPOI.id)) {
         unlockedPoiIds.value.push(nextPOI.id)
         console.log('解锁下一个POI:', nextPOI.name)
 
@@ -384,6 +398,7 @@ export const useGameStore = defineStore('game', () => {
     } else if (currentIndex === allPOIs.length - 1) {
       // 所有POI都已完成
       missionStatus.value.gameCompleted = true
+      clearTargetLocation() // 清除导航目标
       console.log('恭喜！所有任务已完成！')
     }
   }
@@ -397,58 +412,72 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // 检查并解锁下一个POI（通用版）
-    const checkAndUnlockNextPOI = () => {
-      // 1. 获取当前角色和背包状态
-      const character = currentUser.value
-      const collectedSealsCount = inventory.value.seals.length
-  
-      if (!character || !character.routeOrder) {
-        console.warn('当前角色未配置路线 (routeOrder)')
-        return
-      }
-  
-      // 2. 计算下一个目标的索引
-      // 逻辑：
-      // 0印章 -> 在第0站(初始站)
-      // 1印章 -> 应该解锁 routeOrder[1] (第2站)
-      // 2印章 -> 应该解锁 routeOrder[2] (第3站)
-      const nextIndex = collectedSealsCount
-      
-      // 检查是否还有下一站 (避免数组越界)
-      if (nextIndex < character.routeOrder.length) {
-        const nextPOIId = character.routeOrder[nextIndex]
-        
-        console.log(`[路由系统] 角色:${character.name} 印章数:${collectedSealsCount} 下一站:${nextPOIId}`)
-  
-        // 3. 执行解锁和导航
-        if (nextPOIId) {
-          // 解锁
-          if (!missionStatus.value.unlockedPOIs.includes(nextPOIId)) {
-            missionStatus.value.unlockedPOIs.push(nextPOIId)
-            console.log('解锁新地点:', nextPOIId)
-          }
-  
-          // 强制更新导航
-          const poi = getPOIById(nextPOIId)
-          if (poi) {
-            missionStatus.value.currentObjective = `前往${poi.name}继续探索`
-            setTargetLocation(poi.latitude, poi.longitude, poi.name)
-            
-            // 可选：弹窗提示
-            setTimeout(() => {
-               uni.showToast({
-                 title: `新地点解锁：${poi.name}`,
-                 icon: 'none',
-                 duration: 3000
-               })
-            }, 500)
-          }
+  const checkAndUnlockNextPOI = () => {
+    const character = currentUser.value
+    const collectedSealsCount = inventory.value.seals.length
+
+    if (!character || !character.routeOrder) return
+
+    // --- 1. 常规路线阶段 (Route Order) ---
+    const nextIndex = collectedSealsCount
+    if (nextIndex < character.routeOrder.length) {
+      const nextPOIId = character.routeOrder[nextIndex]
+
+      // 确保nextPOIId存在
+      if (!nextPOIId) return
+
+      const poi = getPOIById(nextPOIId)
+
+      if (poi) {
+        // A. 解锁逻辑 (仅首次执行)
+        if (!missionStatus.value.unlockedPOIs.includes(nextPOIId)) {
+          console.log('🔓 首次解锁:', nextPOIId)
+          missionStatus.value.unlockedPOIs.push(nextPOIId)
+          saveProgress() // 🚨 必须立即保存！
+
+          setTimeout(() => {
+             uni.showToast({ title: `解锁新地点：${poi.name}`, icon: 'none' })
+          }, 500)
         }
-      } else {
-        console.log('所有路线点已解锁，或者已到达终局')
+
+        // B. 导航逻辑 (🚨 核心修复：独立于解锁逻辑之外)
+        // 只要是下一站，且还没完成，就强制刷新导航！
+        if (!completedPoiIds.value.includes(nextPOIId)) {
+           // 强制刷新 targetLocation，确保地图组件能画线
+           setTargetLocation(poi.latitude, poi.longitude, poi.name)
+        }
       }
     }
+
+    // --- 2. 最终阶段：进贤门 (Jinxian Gate) ---
+    else if (collectedSealsCount >= 4) {
+      const gateId = 'jinxian_gate'
+      const gatePOI = getPOIById(gateId)
+
+      if (gatePOI) {
+        // A. 首次解锁
+        if (!missionStatus.value.unlockedPOIs.includes(gateId)) {
+          console.log('🎯 首次解锁进贤门')
+          missionStatus.value.unlockedPOIs.push(gateId)
+          saveProgress() // 🚨 必须立即保存！
+
+          setTargetLocation(gatePOI.latitude, gatePOI.longitude, gatePOI.name)
+
+          setTimeout(() => {
+            uni.showToast({ title: '最终地点解锁：进贤门', icon: 'none', duration: 4000 })
+          }, 500)
+        }
+        // B. 导航恢复 (防止丢失)
+        else if (!completedPoiIds.value.includes(gateId)) {
+           // 如果当前没有导航，或者导航没指向进贤门，强制指过去
+           if (!targetLocation.value || targetLocation.value.name !== gatePOI.name) {
+               console.log('🔄 恢复进贤门导航')
+               setTargetLocation(gatePOI.latitude, gatePOI.longitude, gatePOI.name)
+           }
+        }
+      }
+    }
+  }
 
   // 保存游戏进度
   const saveProgress = () => {
@@ -487,6 +516,15 @@ export const useGameStore = defineStore('game', () => {
           gameCompleted: false
         }
         console.log('游戏进度已加载')
+
+        // 🚨 [关键修复] 加载后重新触发导航计算
+        // 解决刷新页面后导航丢失的问题
+        if (currentUser.value && missionStatus.value.gameStarted) {
+          setTimeout(() => {
+            console.log('🔄 恢复导航状态...')
+            checkAndUnlockNextPOI()
+          }, 500)
+        }
       }
     } catch (error) {
       console.error('加载进度失败:', error)
@@ -587,9 +625,33 @@ export const useGameStore = defineStore('game', () => {
   }
 
   // 设置目标位置
-  const setTargetLocation = (latitude: number, longitude: number, name: string) => {
-    targetLocation.value = { latitude, longitude, name }
-    console.log('目标位置设置:', { latitude, longitude, name })
+  const setTargetLocation = (latitude: number | string, longitude: number | string, name: string) => {
+    // 1. 强制类型转换
+    const lat = Number(latitude)
+    const lng = Number(longitude)
+
+    if (isNaN(lat) || isNaN(lng)) {
+      console.error('❌ 导航坐标无效:', latitude, longitude)
+      return
+    }
+
+    // 2. 🚨 核心修复：先清空，强制触发 UI 移除旧线
+    targetLocation.value = null
+
+    // 3. 延迟设置新值，强制触发 UI 绘制新线
+    setTimeout(() => {
+      targetLocation.value = {
+        latitude: lat,
+        longitude: lng,
+        name: String(name)
+      }
+      console.log('🧭 导航目标已重置并更新:', targetLocation.value)
+    }, 100)
+  }
+
+  const clearTargetLocation = () => {
+    targetLocation.value = null
+    console.log('清除导航目标')
   }
 
   // 开始剧情
@@ -847,6 +909,7 @@ export const useGameStore = defineStore('game', () => {
     getItemById,
     updateUserLocation,
     setTargetLocation,
+    clearTargetLocation,
     startStory,
     unlockLocation,
     handleDialogueEnd,
