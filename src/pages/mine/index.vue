@@ -129,12 +129,17 @@
           <view class="close-btn" @tap="closeSealModal">×</view>
         </view>
         <view class="modal-content">
-          <image
-            :src="selectedSeal?.fullImage"
-            class="modal-seal-image"
-            mode="aspectFit"
-          />
-          <text class="modal-description">{{ selectedSeal?.description }}</text>
+          <view class="seal-info-row">
+            <image
+              :src="selectedSeal?.fullImage"
+              class="modal-seal-image"
+              mode="aspectFit"
+            />
+            <view class="seal-text-col">
+              <text class="modal-description">{{ selectedSeal?.description }}</text>
+            </view>
+          </view>
+
           <view class="modal-theme">
             <text class="theme-label">文化主题：</text>
             <text class="theme-text">{{ selectedSeal?.culturalTheme }}</text>
@@ -649,40 +654,68 @@ onMounted(() => {
   }
 
   .modal-content {
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    padding: 10rpx 0;
+  }
 
-    .modal-seal-image {
-      width: 150rpx;
-      height: 150rpx;
-      margin-bottom: 20rpx;
+  /* ✨ 横向布局核心 */
+  .seal-info-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center; /* 垂直居中 */
+    justify-content: flex-start;
+    margin-bottom: 30rpx;
+    padding: 0 20rpx; /* 增加一点内边距 */
+    gap: 30rpx;       /* 图文间距 */
+  }
+
+  .modal-seal-image {
+    width: 140rpx;
+    height: 140rpx;
+    flex-shrink: 0; /* 防止图片被压缩 */
+    border-radius: 12rpx;
+    background: rgba(0,0,0,0.03);
+    border: 1rpx solid rgba(0,0,0,0.05);
+  }
+
+  .seal-text-col {
+    flex: 1; /* 占据剩余空间 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .modal-description {
+    font-size: 28rpx;
+    color: #555;
+    text-align: left; /* ✨ 左对齐更易阅读 */
+    line-height: 1.6;
+    /* 增加最大高度限制，防止文字太多 */
+    max-height: 140rpx;
+    overflow-y: auto;
+  }
+
+  /* 主题栏微调 */
+  .modal-theme {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 137, 123, 0.08);
+    padding: 16rpx;
+    border-radius: 12rpx;
+    margin: 0 20rpx; /* 与上方内容对齐 */
+
+    .theme-label {
+      font-size: 24rpx;
+      color: #00897B;
+      font-weight: bold;
+      margin-right: 10rpx;
     }
 
-    .modal-description {
-      font-size: 26rpx;
-      color: #666;
-      line-height: 1.6;
-      margin-bottom: 20rpx;
-    }
-
-    .modal-theme {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0, 137, 123, 0.1);
-      padding: 15rpx;
-      border-radius: 12rpx;
-
-      .theme-label {
-        font-size: 24rpx;
-        color: #00897B;
-        font-weight: bold;
-        margin-right: 10rpx;
-      }
-
-      .theme-text {
-        font-size: 24rpx;
-        color: #00695C;
-      }
+    .theme-text {
+      font-size: 24rpx;
+      color: #00695C;
     }
   }
 }
