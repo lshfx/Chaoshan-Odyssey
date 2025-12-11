@@ -27,9 +27,11 @@ export const npcs: NPC[] = [
     storylines: {
       chen_linger: {
         characterId: 'chen_linger',
-        startNodeId: 'act1_intro', // 对应原剧本的入口
+        startNodeId: 'act1_intro',
         nodes: [
-          // 1. 开场独白（建立代入感）
+          // ---------------------------------------------------------
+          // 1. 开场与初见
+          // ---------------------------------------------------------
           {
             id: 'act1_intro',
             type: 'normal',
@@ -37,45 +39,43 @@ export const npcs: NPC[] = [
             avatar: '/static/avatars/chen_linger.png',
             content:
               '（站在大成殿前深吸一口气）这里就是揭阳学宫...父亲笔记里提到的第一枚印章就在林先生手中。不管怎样，我必须拿到它。',
-            nextId: 'act1_scene_desc',
+            nextId: 'act1_meet_lin',
           },
-          // 2. 环境描写
           {
-            id: 'act1_scene_desc',
+            id: 'act1_meet_lin',
             type: 'normal',
             speaker: '系统',
             content:
-              '大成殿内十分安静，只有偶尔传来的翻书声。一位身穿长衫的先生正背对着你擦拭牌匾，阳光从窗格斜射进来，扬起细微的灰尘。',
-            nextId: 'act1_choice_1',
+              '大成殿内十分安静。一位身穿长衫的先生正背对着你擦拭牌匾，阳光从窗格斜射进来，扬起细微的灰尘。',
+            nextId: 'act1_choice_attitude',
           },
-          // 3. 第一次抉择：开场白
+
+          // ---------------------------------------------------------
+          // 2. 态度抉择
+          // ---------------------------------------------------------
           {
-            id: 'act1_choice_1',
+            id: 'act1_choice_attitude',
             type: 'choice',
             speaker: '系统',
-            content: '请选择你的开场白：',
+            content: '林先生似乎不愿理人，请选择你的开场白：',
             options: [
               {
-                label: '公事公办',
-                text: '（清了清嗓子，亮出腰牌）林先生，学宫古籍失窃案有眉目了，但我需要借"学宫印"一用。',
-                nextId: 'act1_branch_a',
-                effects: { courage: 1, intimacy: -1 }, // 🔴 果敢+1, 🟢 亲密度-1
+                label: '公事公办（强硬）',
+                nextId: 'act1_branch_strict',
+                effects: { courage: 1, intimacy: -1 },
               },
               {
-                label: '真诚示弱',
-                text: '（上前一步，恭敬行礼）林先生，晚辈灵儿求见。事关二十年前我父母的旧案，求先生成全。',
-                nextId: 'act1_branch_b',
-                effects: { intimacy: 1 }, // 🟢 亲密度+1
+                label: '真诚示弱（礼貌）',
+                nextId: 'act1_branch_sincere',
+                effects: { intimacy: 1 },
               },
               {
                 label: '稍后再来',
-                text: '（有些为难，看看再说吧...）',
                 nextId: 'act1_leave_choice',
-                effects: { courage: -1, intimacy: 0 }, // 🔴 果敢-1, 亲密度不变
               },
             ],
           },
-          // 3-1. 离开节点（点击"稍后再来"后触发）
+          // 离开分支
           {
             id: 'act1_leave_choice',
             type: 'normal',
@@ -85,167 +85,188 @@ export const npcs: NPC[] = [
               '（你感到一阵心烦意乱，决定先离开学宫，整理一下思绪。晚些时候再回来找林先生吧。）',
             nextId: 'act1_leave',
           },
-          // 3-2. 离开节点（存档并退出）
           {
             id: 'act1_leave',
             type: 'end',
             speaker: '系统',
             content: '你决定暂时离开，稍后再来挑战。',
           },
-          // 4. 分支 A：冷淡回应
+          // 强硬分支
           {
-            id: 'act1_branch_a',
+            id: 'act1_branch_strict',
             type: 'normal',
             speaker: '林文渊',
             avatar: '/static/npcs/lin_wenyuan.png',
             content:
-              '（动作停顿了一下，转过身，神色冷淡）公事？那便按公事规矩办。答不出难题，谁也别想拿走印章。',
-            nextId: 'act1_task_difficulty',
+              '（动作停顿了一下，冷淡转身）公事？那便按公事规矩办。想拿印章，先过我这关。',
+            nextId: 'act1_task_bow_intro',
           },
-          // 5. 分支 B：柔和回应
+          // 柔和分支
           {
-            id: 'act1_branch_b',
+            id: 'act1_branch_sincere',
             type: 'normal',
             speaker: '林文渊',
             avatar: '/static/npcs/lin_wenyuan.png',
             content:
-              '（叹了口气，放下手中的抹布，眼神柔和）你和你母亲长得真像……罢了，印章可以借你，但规矩不能废。',
-            nextId: 'act1_task_normal',
-          },
-          // 6. 模式提示与过渡
-          {
-            id: 'act1_task_difficulty',
-            type: 'normal',
-            speaker: '系统',
-            content:
-              '【进入困难模式】林先生似乎对你的礼数很在意，请完成他的考验。',
-            nextId: 'act1_do_action',
-          },
-          {
-            id: 'act1_task_normal',
-            type: 'normal',
-            speaker: '系统',
-            content: '【进入普通模式】既然林先生愿意给机会，就请按规矩行事吧。',
-            nextId: 'act1_do_action',
+              '（眼神柔和了一些）你和你母亲长得真像……罢了。虽然有情分在，但学宫的规矩不能废。',
+            nextId: 'act1_task_bow_intro',
           },
 
-          // --- 任务环节 ---
-
-          // 7. 任务：行礼
+          // ---------------------------------------------------------
+          // 3. 任务环节：行礼与答题
+          // ---------------------------------------------------------
           {
-            id: 'act1_do_action',
-            type: 'task',
-            taskId: 'bow_to_confucius', // 对应 tasks 里的 id
-            nextId: 'act1_quiz_1',
+            id: 'act1_task_bow_intro',
+            type: 'normal',
+            speaker: '林文渊',
+            avatar: '/static/npcs/lin_wenyuan.png',
+            content: '孔圣人面前，先正衣冠，再行揖礼。让我看看你的诚意。',
+            nextId: 'act1_task_bow',
           },
-          // 8. 任务：答题
           {
-            id: 'act1_quiz_1',
+            id: 'act1_task_bow',
             type: 'task',
-            taskId: 'riddle_one',
+            taskId: 'bow_to_confucius', // 关联 commonTasks
+            nextId: 'act1_task_quiz_intro',
+          },
+          {
+            id: 'act1_task_quiz_intro',
+            type: 'normal',
+            speaker: '林文渊',
+            avatar: '/static/npcs/lin_wenyuan.png',
+            content: '礼数尚可。接下来听题：揭阳学宫始建于哪个朝代？',
+            nextId: 'act1_task_quiz',
+          },
+          {
+            id: 'act1_task_quiz',
+            type: 'task',
+            taskId: 'riddle_one', // 关联 commonTasks
             nextId: 'act1_puzzle_success',
-            failId: 'act1_fail',
+            failId: 'act1_fail_quiz',
           },
-          // 2. 失败反馈节点 (Fail Feedback)
           {
-            id: 'act1_fail',
+            id: 'act1_fail_quiz',
             type: 'normal',
             speaker: '林文渊',
             avatar: '/static/npcs/lin_wenyuan.png',
-            content: '（摇了摇头）连这个都不知道？年轻人，基本功还要再练练。', // 嘲讽一下
+            content: '（摇头）连这个都不知道？回去多读几年书再来吧！',
             nextId: 'act1_retry_choice',
           },
-
-          // 3. 重试选择节点 (Retry Choice)
           {
             id: 'act1_retry_choice',
             type: 'choice',
             speaker: '系统',
-            content: '林先生似乎对你很不满意。要重新挑战吗？',
+            content: '林先生对你很不满意，是否重新挑战？',
             options: [
               {
-                label: '我准备好了',
-                text: '（深吸一口气）林先生，刚才是我大意了，请再问一次。',
-                nextId: 'act1_quiz_1', // 🔄 关键：闭环！跳回任务节点ID
+                label: '再试一次',
+                nextId: 'act1_task_quiz',
               },
               {
-                label: '稍后再来',
-                text: '（羞愧地低下头）晚辈这就去温书。',
-                nextId: 'act1_leave', // 🚪 退出或去其他地方，现在这个节点已存在
+                label: '羞愧离开',
+                nextId: 'act1_leave',
               },
             ],
           },
 
-          // --- 任务完成后的剧情 ---
-
+          // ---------------------------------------------------------
+          // 4. 印章获取与侦探引导 (逻辑修复点)
+          // ---------------------------------------------------------
           {
             id: 'act1_puzzle_success',
             type: 'normal',
             speaker: '林文渊',
             avatar: '/static/npcs/lin_wenyuan.png',
             content:
-              '（抚须点头）不错，看来你确实对学宫有所了解，并非无礼之徒。印章就在这书案上。',
-            nextId: 'act1_choice_2',
+              '（抚须点头）不错，是个可造之材。这枚【儒学文脉章】便借给你一用。',
+            trigger: 'grant_seal_one', // ✅ 立即发放印章
+            nextId: 'act1_hint_inspect_pre',
           },
-          // 9. 第二次抉择：腰牌
           {
-            id: 'act1_choice_2',
-            type: 'choice',
-            speaker: '系统',
+            id: 'act1_hint_inspect_pre',
+            type: 'normal',
+            speaker: '陈灵儿',
+            avatar: '/static/avatars/chen_linger.png',
             content:
-              '（你看到印章旁似乎有一个凹槽，这让你想起了身上的物品...）',
-            options: [
-              {
-                label: '出示腰牌',
-                text: '林先生，我父母当年也是学宫护卫，这是我母亲留下的腰牌，请您看看...',
-                nextId: 'act1_reveal_badge',
-                effects: { clue: 1 }, // 🔵 线索+1 (关键线索)
-              },
-              {
-                label: '暂且隐瞒',
-                text: '（这腰牌太过重要，还是先别暴露。）林先生，请问这印章为何如此重要？',
-                nextId: 'act1_conceal_badge',
-              },
-            ],
+              '（接过印章，指腹划过侧面时，似乎摸到了一丝细微的裂痕...这印章似乎藏着什么秘密？）\n【系统提示：稍后请进入背包仔细调查印章】',
+            nextId: 'act1_pre_present',
           },
-          // 10. 结局 A：获得关键线索
+
+          // ---------------------------------------------------------
+          // 5. 关键抉择：出示信物 (获取额外线索)
+          // ---------------------------------------------------------
+          {
+            id: 'act1_pre_present',
+            type: 'normal',
+            speaker: '陈灵儿',
+            avatar: '/static/avatars/chen_linger.png',
+            content:
+              '（不过当务之急，是向林先生打听当年的事。若能让他相信我是故人之后...）',
+            nextId: 'act1_present_badge',
+          },
+          {
+            id: 'act1_present_badge',
+            type: 'present_item',
+            speaker: '系统',
+            content: '林文渊似乎准备送客了，你身上有什么能证明身份的东西吗？',
+            presentHint:
+              '提示：出示一件母亲留下的旧物（若未出示将进入普通分支）',
+            requiredItemId: 'item_badge',
+            correctNextId: 'act1_reveal_badge',
+            wrongNextId: 'act1_conceal_badge',
+          },
+
+          // ---------------------------------------------------------
+          // 6. 结局分支 (只发放线索)
+          // ---------------------------------------------------------
+
+          // 分支 A：完美线索 (Six Fingers)
           {
             id: 'act1_reveal_badge',
             type: 'normal',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: '/static/npcs/lin_wenyuan_shocked.png',
             content:
-              '（大惊失色，颤抖着接过腰牌）这确实是你母亲之物...孩子，当年你父母追查的是一个“左手有六指”的人！切记！',
-            nextId: 'act1_get_seal',
+              '（大惊失色，颤抖着接过腰牌）这...这半月纹...孩子，当年你父母追查的是一个“左手有六指”的人！切记！',
+            trigger: 'grant_clue_six_fingers', // 发放核心线索
+            nextId: 'act1_end_perfect',
           },
-          // 11. 结局 B：获得模糊线索
+
+          // 分支 B：模糊线索 (Gloves)
           {
             id: 'act1_conceal_badge',
             type: 'normal',
             speaker: '林文渊',
             avatar: '/static/npcs/lin_wenyuan.png',
             content:
-              '（皱了皱眉）这印章关系到学宫文脉传承...我也不能多说。只能告诉你，要小心身边那些“总是戴着手套”的人。',
-            nextId: 'act1_get_seal',
+              '既然印章已到手，就请回吧。我也不能多说，只能告诉你，以后办案要小心身边那些“总是戴着手套”的人。',
+            trigger: 'grant_clue_gloves', // 发放普通线索
+            nextId: 'act1_end_normal',
           },
-          // 12. 获得印章（第一幕结束）
+
+          // ---------------------------------------------------------
+          // 7. 幕间结算
+          // ---------------------------------------------------------
           {
-            id: 'act1_get_seal',
-            type: 'normal',
-            speaker: '系统',
-            content: '【恭喜！你通过了考验，获得物品：儒学文脉章】',
-            nextId: 'act1_end',
-          },
-          {
-            id: 'act1_end',
+            id: 'act1_end_perfect',
             type: 'end',
             speaker: '系统',
             content:
-              '第一幕【学宫试探】完成。线索指向了古城老街的青狮表演场。去找陈狮魁吧。',
-            trigger: 'grant_seal',
+              '第一幕【学宫试探】完美完成。获得了核心线索“六指”。线索指向了古城老街的青狮表演场。',
+            trigger: 'chapter_complete_perfect',
+          },
+          {
+            id: 'act1_end_normal',
+            type: 'end',
+            speaker: '系统',
+            content:
+              '第一幕【学宫试探】完成。虽然获得了印章，但关于凶手的特征依然模糊。线索指向了古城老街。',
+            trigger: 'chapter_complete_normal',
           },
 
-          // --- 通关后随机闲聊节点 ---
+          // ---------------------------------------------------------
+          // 8. 闲聊节点 (保留旧版)
+          // ---------------------------------------------------------
           {
             id: 'completed_hint',
             type: 'end',
@@ -290,15 +311,15 @@ export const npcs: NPC[] = [
       },
     },
 
-    // 通用任务：所有角色都可以访问
+    // 通用任务：所有角色都可以访问 (保持不变)
     commonTasks: [
       {
         id: 'bow_to_confucius',
         description: '在大成殿向孔子像行揖礼',
         type: 'action',
         correctOption: '行揖礼',
-        actionType: 'pose_simulation', // 标识这是一个姿态模拟任务
-        actionText: '📸 采集动作', // 修改按钮文字，提示用户需要交互
+        actionType: 'pose_simulation',
+        actionText: '📸 采集动作',
       },
       {
         id: 'riddle_one',
@@ -318,7 +339,7 @@ export const npcs: NPC[] = [
       },
     ],
 
-    // 保持向后兼容的旧字段（已废弃）
+    // 保持向后兼容的旧字段
     /** @deprecated 使用 storylines[characterId].nodes 替代 */
     scriptNodes: [],
     /** @deprecated 使用 commonTasks 替代 */
@@ -346,13 +367,14 @@ export const npcs: NPC[] = [
       },
     ],
 
-    // 新增：支持角色分片的剧本系统
     storylines: {
       chen_linger: {
         characterId: 'chen_linger',
-        startNodeId: 'act2_start', // 对应原剧本的入口
+        startNodeId: 'act2_start',
         nodes: [
-          // 1. 开场观察
+          // ---------------------------------------------------------
+          // 1. 开场与初见
+          // ---------------------------------------------------------
           {
             id: 'act2_start',
             type: 'normal',
@@ -366,140 +388,225 @@ export const npcs: NPC[] = [
             type: 'normal',
             speaker: '陈灵儿',
             avatar: '/static/avatars/chen_linger.png',
-            content: '（这人看起来脾气暴躁...想要拿到印章，恐怕没那么容易。）',
-            nextId: 'act2_choice_1',
+            content:
+              '（这人看起来脾气暴躁，连林先生都对他颇有微词...想要拿到印章，恐怕没那么容易。）',
+            nextId: 'act2_choice_attitude',
           },
-          // 2. 关键抉择：硬碰硬还是以技服人
+
+          // ---------------------------------------------------------
+          // 2. 态度抉择 (影响亲密度)
+          // ---------------------------------------------------------
           {
-            id: 'act2_choice_1',
+            id: 'act2_choice_attitude',
             type: 'choice',
             speaker: '系统',
             content: '陈狮魁似乎很讨厌官府的人。你打算怎么做？',
             options: [
               {
-                label: '武力威慑',
+                label: '武力威慑 (强硬)',
                 text: '（亮出捕快佩刀）班主，配合官府办案，交出印章！',
-                nextId: 'act2_branch_a', // 🔴 困难线
-                effects: { courage: 1, intimacy: -2 },
+                nextId: 'act2_branch_force',
+                effects: { courage: 1, intimacy: -2 }, // 🔴 困难线
               },
               {
-                label: '技艺折服',
+                label: '技艺折服 (技巧)',
                 text: '（放下佩刀，抱拳行礼）我不以捕快身份压你，愿用青狮步法赢你！',
-                nextId: 'act2_branch_b', // 🟢 亲密线
-                effects: { intimacy: 2 },
+                nextId: 'act2_branch_skill',
+                effects: { intimacy: 2 }, // 🟢 亲密线
               },
             ],
           },
 
-          // --- 分支 A：武力威慑 (困难模式) ---
+          // 分支 A：强硬
           {
-            id: 'act2_branch_a',
+            id: 'act2_branch_force',
             type: 'normal',
             speaker: '陈狮魁',
             avatar: '/static/npcs/chen_shikui.png',
             content:
               '（冷笑一声）哼！官威好大！印章可以给你，但你别想从我这听到半句废话。不过，规矩就是规矩，想拿印章，先过这关！',
-            nextId: 'act2_task_action',
+            nextId: 'act2_task_intro',
           },
-
-          // --- 分支 B：技艺折服 (普通/友好模式) ---
+          // 分支 B：技巧
           {
-            id: 'act2_branch_b',
+            id: 'act2_branch_skill',
             type: 'normal',
             speaker: '陈狮魁',
             avatar: '/static/npcs/chen_shikui.png',
             content:
               '（眼神一亮，上下打量你）哦？有点意思。像当年那个护卫的种！来，让我看看你的身手！',
-            nextId: 'act2_task_action',
+            nextId: 'act2_task_intro',
           },
 
-          // 3. 任务环节：动作挑战
+          // ---------------------------------------------------------
+          // 3. 任务环节：动作 + 答题
+          // ---------------------------------------------------------
           {
-            id: 'act2_task_action',
-            type: 'task',
-            taskId: 'lion_dance_action', // 对应上面的 tasks
-            nextId: 'act2_task_quiz',
+            id: 'act2_task_intro',
+            type: 'normal',
+            speaker: '陈狮魁',
+            avatar: '/static/npcs/chen_shikui.png',
+            content: '青狮舞讲究"动如雷霆，静如处子"。跟上我的动作！',
+            nextId: 'act2_do_action',
           },
-          // 4. 任务环节：知识问答
           {
-            id: 'act2_task_quiz',
+            id: 'act2_do_action',
             type: 'task',
-            taskId: 'lion_pattern_quiz',
+            taskId: 'lion_dance_action', // 关联 commonTasks
+            nextId: 'act2_quiz_intro',
+          },
+          {
+            id: 'act2_quiz_intro',
+            type: 'normal',
+            speaker: '陈狮魁',
+            avatar: '/static/npcs/chen_shikui.png',
+            content: '身法尚可。再考考你的眼力！',
+            nextId: 'act2_do_quiz',
+          },
+          {
+            id: 'act2_do_quiz',
+            type: 'task',
+            taskId: 'lion_pattern_quiz', // 关联 commonTasks
             nextId: 'act2_success',
+            failId: 'act2_fail',
+          },
+          // 失败分支
+          {
+            id: 'act2_fail',
+            type: 'normal',
+            speaker: '陈狮魁',
+            avatar: '/static/npcs/chen_shikui.png',
+            content: '（摆摆手）连狮纹都看不懂，回去练练再来吧。',
+            nextId: 'act2_retry_choice',
+          },
+          {
+            id: 'act2_retry_choice',
+            type: 'choice',
+            speaker: '系统',
+            content: '挑战失败，是否重新尝试？',
+            options: [
+              { label: '再试一次', nextId: 'act2_do_quiz' },
+              { label: '稍后挑战', nextId: 'act2_leave' },
+            ],
+          },
+          {
+            id: 'act2_leave',
+            type: 'end',
+            speaker: '系统',
+            content: '你决定先去别处转转。',
           },
 
-          // 5. 任务成功后的反应 (区分好感度)
+          // ---------------------------------------------------------
+          // 4. 成功与印章发放 (基础奖励)
+          // ---------------------------------------------------------
           {
             id: 'act2_success',
             type: 'normal',
             speaker: '陈狮魁',
             avatar: '/static/npcs/chen_shikui.png',
-            content: '好！身手不错，也是个懂行的人。印章归你了。',
-            nextId: 'act2_check_intimacy', // 检查亲密度，决定是否有隐藏剧情
+            content: '好！身手不错，也是个懂行的人。这枚【青狮非遗章】归你了。',
+            trigger: 'grant_seal_two', // ✅ 立即发放印章
+            nextId: 'act2_reveal_mark',
           },
 
-          // 6. 隐藏剧情判定 (蝴蝶效应)
+          // ---------------------------------------------------------
+          // 5. 剧情转折：发现胎记 (开启隐藏线索)
+          // ---------------------------------------------------------
           {
-            id: 'act2_check_intimacy',
+            id: 'act2_reveal_mark',
+            type: 'normal',
+            speaker: '系统',
+            content:
+              '你接过印章正欲转身离开，动作幅度略大，不慎露出了腰间的半月形胎记。\n陈狮魁的目光突然凝固了。',
+            nextId: 'act2_interrupt',
+          },
+          {
+            id: 'act2_interrupt',
+            type: 'normal',
+            speaker: '陈狮魁',
+            avatar: '/static/npcs/chen_shikui.png',
+            content: '慢着！你腰上那个...那个半月形的痕迹...',
+            nextId: 'act2_choice_mark',
+          },
+          {
+            id: 'act2_choice_mark',
             type: 'choice',
             speaker: '系统',
-            content: '（陈狮魁递给你印章时，目光停留在你腰间的半月胎记上...）',
+            content: '陈狮魁死死盯着你的胎记，神情复杂。',
             options: [
               {
-                label: '让他看胎记',
-                text: '（察觉到他的目光，大方展示）班主认识这个胎记？',
-                nextId: 'act2_reveal_scar',
-                effects: { clue: 1 }, // 获得关键线索：狮纹伤疤
+                label: '大方展示',
+                text: '（停下脚步）这是我娘胎里带出来的，班主认得？',
+                nextId: 'act2_confirm_identity',
+                effects: { clue: 1 }, // 🟢 获得关键线索
               },
               {
-                label: '遮挡胎记',
-                text: '（下意识地遮挡）多谢班主赠印。',
+                label: '遮掩离去',
+                text: '（拉好衣角）没什么，旧伤罢了。告辞。',
                 nextId: 'act2_miss_clue',
               },
             ],
           },
 
-          // 7. 结局 A：获得关键线索 (狮纹伤疤)
+          // ---------------------------------------------------------
+          // 6. 结局分支 (线索获取)
+          // ---------------------------------------------------------
+
+          // 分支 A：获得核心线索 (Lion Scar)
           {
-            id: 'act2_reveal_scar',
+            id: 'act2_confirm_identity',
             type: 'normal',
             speaker: '陈狮魁',
             avatar: '/static/npcs/chen_shikui.png',
             content:
-              '（激动地拍大腿）果然是故人之女！孩子，你要找的凶手，当年手背被你爹砍了一刀，留有“狮纹伤疤”！千万记住了！',
-            nextId: 'act2_get_seal',
+              '（激动地拍大腿）错不了！果然是故人之女！孩子，既然你是那人的后代，有些事我必须告诉你。',
+            nextId: 'act2_clue_reveal',
+          },
+          {
+            id: 'act2_clue_reveal',
+            type: 'normal',
+            speaker: '陈狮魁',
+            avatar: '/static/npcs/chen_shikui.png',
+            content:
+              '当年那个抢走印章的人，和我交过手。他被我在手背上狠狠砍了一刀，留下了【狮纹伤疤】。这标记这辈子都消不掉！',
+            trigger: 'grant_clue_lion_scar', // ✅ 发放核心线索
+            nextId: 'act2_end_perfect',
           },
 
-          // 8. 结局 B：错过线索
+          // 分支 B：错过线索
           {
             id: 'act2_miss_clue',
             type: 'normal',
             speaker: '陈狮魁',
             avatar: '/static/npcs/chen_shikui.png',
             content:
-              '（收回目光，叹了口气）行吧，江湖路远，好自为之。那个凶手受过伤，自己小心点。',
-            nextId: 'act2_get_seal',
+              '（眼神黯淡下去）也是...世上相似的人多了去了。行吧，江湖路远，好自为之。',
+            nextId: 'act2_end_normal',
           },
 
-          // 9. 第二幕结束
+          // ---------------------------------------------------------
+          // 7. 幕间结算
+          // ---------------------------------------------------------
           {
-            id: 'act2_get_seal',
-            type: 'normal',
-            speaker: '系统',
-            content:
-              '【恭喜！获得物品：青狮非遗章】\n（印章刻有怒狮头像，威风凛凛）',
-            nextId: 'act2_end',
-          },
-          {
-            id: 'act2_end',
+            id: 'act2_end_perfect',
             type: 'end',
             speaker: '系统',
             content:
-              '第二幕【青狮怒火】完成。所有的线索都汇聚到了终点——进贤门。最终的审判即将开始。',
-            trigger: 'grant_seal',
+              '第二幕【青狮怒火】完成。你获得了印章，并掌握了凶手的重要特征“狮纹伤疤”。所有的线索都汇聚到了终点——进贤门。',
+            trigger: 'chapter_complete_perfect',
+          },
+          {
+            id: 'act2_end_normal',
+            type: 'end',
+            speaker: '系统',
+            content:
+              '第二幕【青狮怒火】完成。虽然获得了印章，但陈狮魁似乎还有话没说。线索指向了终点——进贤门。',
+            trigger: 'chapter_complete_normal',
           },
 
-          // --- 通关后随机闲聊节点 ---
+          // ---------------------------------------------------------
+          // 8. 闲聊节点
+          // ---------------------------------------------------------
           {
             id: 'completed_hint',
             type: 'end',
@@ -524,19 +631,11 @@ export const npcs: NPC[] = [
             content:
               '功夫茶要静，舞狮要动！一静一动，才是咱们潮汕人的本事。印章要保管好啊。',
           },
-          {
-            id: 'completed_chat_tradition',
-            type: 'end',
-            speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
-            content:
-              '这青狮舞传了几百年，驱邪镇煞。你手里的印章，关系着咱们揭阳的根。',
-          },
         ],
       },
     },
 
-    // 通用任务：所有角色都可以访问
+    // 通用任务定义
     commonTasks: [
       {
         id: 'lion_dance_action',
@@ -556,10 +655,7 @@ export const npcs: NPC[] = [
       },
     ],
 
-    // 保持向后兼容的旧字段（已废弃）
-    /** @deprecated 使用 storylines[characterId].nodes 替代 */
     scriptNodes: [],
-    /** @deprecated 使用 commonTasks 替代 */
     tasks: [],
   },
   {
@@ -728,253 +824,248 @@ export const npcs: NPC[] = [
   },
   // ... 前面是林文渊、陈狮魁等 ...
 
-  // 🌟 核心修正：陈灵儿线 - 最终 BOSS 蔡福生
   {
     id: 'cai_fusheng',
     name: '蔡福生',
     title: '醉仙楼老板',
-    avatar: '/static/npcs/cai_fusheng_boss.png', // 确保有图，或者用 default
-    location: 'jinxian_gate', // 决战地点：进贤门
+    avatar: '/static/npcs/cai_fusheng_boss.png',
+    location: 'jinxian_gate',
     background: '/static/locations/jinxian_gate_bg.jpg',
     description: '表面是和气生财的老板，实则是当年的掠夺者后代',
     personality: '伪善、狡诈',
-    sealId: 'fake_seal', // 伪造的印章
+    sealId: 'seal_three_fake', // 默认持有的伪造物
+    dialogue: [
+      {
+        id: 'greeting',
+        text: '和气生财，和气生财。陈捕快，今日怎么有空光临寒舍？',
+      },
+      {
+        id: 'default',
+        text: '我这人做生意最讲诚信，童叟无欺。您随便看。',
+      },
+    ],
 
-    // 新增：支持角色分片的剧本系统
     storylines: {
       chen_linger: {
         characterId: 'chen_linger',
-        startNodeId: 'act3_start', // 对应原剧本的入口
+        startNodeId: 'act3_meet_cai',
         nodes: [
-          // 1. 决战开场
+          // ---------------------------------------------------------
+          // 1. 决战开场与获得伪证
+          // ---------------------------------------------------------
           {
-            id: 'act3_start',
-            type: 'normal',
-            speaker: '系统',
-            content:
-              '进贤门下，蔡福生正拿着一枚印章把玩。你已集齐了其他线索，发现他手中的【印章三】表面虽光鲜，但侧面竟然没有拼接凹槽！',
-            nextId: 'act3_confrontation',
-          },
-          {
-            id: 'act3_confrontation',
-            type: 'normal',
-            speaker: '陈灵儿',
-            avatar: '/static/avatars/chen_linger.png',
-            content:
-              '（那是假的...而且他一直戴着手套，难道是为了掩饰六指？）蔡老板，别来无恙。',
-            nextId: 'act3_cai_reply',
-          },
-          {
-            id: 'act3_cai_reply',
+            id: 'act3_meet_cai',
             type: 'normal',
             speaker: '蔡福生',
             avatar: '/static/npcs/cai_fusheng_boss.png',
             content:
-              '哟，这不是陈捕快吗？怎么有空来我这儿喝茶？你看，我这枚印章可是刚收来的宝贝。',
-            nextId: 'act3_choice_final',
+              '哟，这不是陈捕快吗？怎么有空来进贤门吹风？听说你在找老物件，巧了，我这儿正好收了一枚印章。',
+            nextId: 'act3_get_fake',
+          },
+          {
+            id: 'act3_get_fake',
+            type: 'normal',
+            speaker: '系统',
+            content:
+              '蔡福生笑眯眯地递过来一枚印章。印章表面光鲜亮丽，刻着进贤门的图案。',
+            trigger: 'grant_seal_fake', // ✅ 发放伪造印章
+            nextId: 'act3_inspect_pause',
           },
 
-          // 2. 最终审判抉择 (策略选择，无属性加成)
+          // ---------------------------------------------------------
+          // 2. 强制调查断点 (引导玩家使用背包)
+          // ---------------------------------------------------------
           {
-            id: 'act3_choice_final',
+            id: 'act3_inspect_pause',
+            type: 'end', // ⛔️ 暂时结束对话，强迫玩家操作
+            speaker: '系统',
+            content:
+              '（拿到印章的一瞬间，你感觉手感有些不对劲……侧面似乎太平滑了？）\n\n【系统提示】请点击右上角【背包】，仔细【调查】这枚新获得的印章，获得线索后再回来找蔡福生对质。',
+            // ✨ [新增] 通用跳转条件：如果已获得线索，则跳转到对质节点
+            jumpCondition: {
+              requiredClue: 'clue_fake_seal',
+              nextId: 'act3_confront'
+            }
+          },
+
+          // ---------------------------------------------------------
+          // 3. 对质与举证 (玩家调查归来后触发)
+          // ---------------------------------------------------------
+          {
+            id: 'act3_confront',
+            type: 'normal',
+            speaker: '陈灵儿',
+            avatar: '/static/avatars/chen_linger.png',
+            content:
+              '（眼神犀利）蔡老板，生意人讲究诚信。但这印章……恐怕有问题吧？',
+            nextId: 'act3_present_fake',
+          },
+          {
+            id: 'act3_present_fake',
+            type: 'present_item',
+            speaker: '系统',
+            content: '请指出蔡福生给的信物哪里有问题。',
+            presentHint: '提示：出示刚才获得的假印章',
+            requiredItemId: 'item_seal_three_fake', // 🎯 修正为背包中实际存在的物品 ID
+            correctNextId: 'act3_cai_deny',
+            wrongNextId: 'act3_fail_present',
+          },
+          {
+            id: 'act3_fail_present',
+            type: 'normal',
+            speaker: '蔡福生',
+            content: '陈捕快，你拿个毫不相干的东西出来做什么？莫非是想讹我？',
+            nextId: 'act3_present_fake', // 重试
+          },
+          {
+            id: 'act3_cai_deny',
+            type: 'normal',
+            speaker: '蔡福生',
+            avatar: '/static/npcs/cai_fusheng_boss.png',
+            content:
+              '（脸色一僵，随即恢复正常）假的？哎呀！我也是被人骗了！但我可是正经商人，陈捕快可不能含血喷人啊。',
+            nextId: 'act3_final_choice',
+          },
+
+          // ---------------------------------------------------------
+          // 4. 最终审判抉择 (策略分支)
+          // ---------------------------------------------------------
+          {
+            id: 'act3_final_choice',
             type: 'choice',
             speaker: '系统',
-            content: '你的心跳加速。所有的证据都指向他。你决定如何揭穿他？',
+            content:
+              '蔡福生还在狡辩，而且他的左手一直藏在袖子里。所有的线索已齐，该收网了！',
             options: [
               {
-                label: '雷霆一击 (强行制服)',
-                text: '（趁他喝茶，直接掀翻桌子，强行扯下他的手套！）别装了！让我看看你的左手！',
+                label: '雷霆一击 (需果敢)',
+                text: '（掀翻桌子）别装了！让我看看你的左手！',
                 nextId: 'act3_check_courage',
-                // 🚨 移除作弊式加成，仅根据玩家历史积累判定
-                effects: { courage: 1, clue: 0 }, // 小幅调整，不影响最终判定
               },
               {
-                label: '言语周旋 (智取)',
-                text: '蔡老板，听说您这手套是西洋货？不知能否摘下来让我开开眼？',
+                label: '言语周旋 (需线索)',
+                text: '“蔡老板，听说您这手套是西洋货？摘下来看看？”',
                 nextId: 'act3_check_clue',
-                // 🚨 移除作弊式加成，仅根据玩家历史积累判定
-                effects: { clue: 1, intimacy: 1 }, // 小幅调整，不影响最终判定
               },
               {
-                label: '暗中观察 (等待时机)',
-                text: '（不出声，仔细观察他的每一个动作，寻找破绽...）',
+                label: '暗中观察 (需亲密)',
+                text: '（不出声，死死盯着他试图销毁证据的动作）',
                 nextId: 'act3_check_intimacy',
-                // 🚨 移除惩罚性扣减，仅根据玩家历史积累判定
-                effects: { intimacy: 1 }, // 小幅调整，不影响最终判定
               },
             ],
           },
 
-          // --- 属性判定节点 ---
-          // 果敢判定节点：需要 courage >= 2
+          // ---------------------------------------------------------
+          // 5. 属性判定 (Check Logic)
+          // ---------------------------------------------------------
+
+          // A. 果敢判定 (Courage Check)
           {
             id: 'act3_check_courage',
             type: 'check',
-            speaker: '系统',
-            content: '【果敢判定】基于你之前的果敢表现...',
-            condition: { courage: 2 },
-            nextId: 'act3_success_courage',
-            failId: 'act3_fail_courage',
+            condition: { courage: 2 }, // 需要前两幕都选强硬选项
+            nextId: 'act3_outcome_force_success',
+            failId: 'act3_outcome_force_fail',
           },
           {
-            id: 'act3_success_courage',
+            id: 'act3_outcome_force_success',
             type: 'normal',
             speaker: '系统',
-            content: '【判定成功】你动作果决，蔡福生来不及反应！',
-            nextId: 'act3_branch_a',
+            content:
+              '【判定成功】你动作极快，一把抓住了他的左手腕！手套脱落，露出了那只有**六根手指**的手！以及手背上狰狞的**狮纹伤疤**！',
+            nextId: 'act3_ending_perfect',
           },
           {
-            id: 'act3_fail_courage',
+            id: 'act3_outcome_force_fail',
             type: 'normal',
             speaker: '系统',
-            content: '【判定失败】蔡福生反应很快，侧身躲过了你的攻击！',
-            nextId: 'act3_partial_success',
+            content:
+              '【判定失败】你试图冲上去，但犹豫了一瞬。蔡福生顺势推倒了火盆，场面一片混乱！',
+            nextId: 'act3_ending_bad',
           },
 
-          // 线索判定节点：需要 clue >= 2
+          // B. 线索判定 (Clue Check)
           {
             id: 'act3_check_clue',
             type: 'check',
-            speaker: '系统',
-            content: '【线索判定】基于你收集的线索情报...',
-            condition: { clue: 2 },
-            nextId: 'act3_success_clue',
-            failId: 'act3_fail_clue',
+            condition: { clue: 2 }, // 需要前两幕都拿到隐藏线索
+            nextId: 'act3_outcome_wit_success',
+            failId: 'act3_outcome_wit_fail',
           },
           {
-            id: 'act3_success_clue',
+            id: 'act3_outcome_wit_success',
             type: 'normal',
             speaker: '系统',
-            content: '【判定成功】你言语犀利，句句切中要害！',
-            nextId: 'act3_branch_b_success',
+            content:
+              '【判定成功】你冷静地指出了他所有的破绽。蔡福生心理防线崩溃，正要逃跑时被埋伏的郑批客拦住。',
+            nextId: 'act3_ending_normal', // 智取虽然抓了人，但可能没拿到日志
           },
           {
-            id: 'act3_fail_clue',
+            id: 'act3_outcome_wit_fail',
             type: 'normal',
             speaker: '系统',
-            content: '【判定失败】蔡福生警惕地躲开了你的试探。',
-            nextId: 'act3_partial_success',
+            content: '【判定失败】证据链不完整，蔡福生反咬一口说你诬陷良民。',
+            nextId: 'act3_ending_bad',
           },
 
-          // 亲密度判定节点：需要 intimacy >= 1
+          // C. 亲密/洞察判定 (Intimacy Check)
           {
             id: 'act3_check_intimacy',
             type: 'check',
-            speaker: '系统',
-            content: '【洞察判定】基于你的人际关系和观察力...',
             condition: { intimacy: 1 },
-            nextId: 'act3_success_intimacy',
-            failId: 'act3_fail_intimacy',
+            nextId: 'act3_outcome_observe_success',
+            failId: 'act3_outcome_observe_fail',
           },
           {
-            id: 'act3_success_intimacy',
+            id: 'act3_outcome_observe_success',
             type: 'normal',
             speaker: '系统',
-            content: '【判定成功】你敏锐地捕捉到了他袖口的细节！',
-            nextId: 'act3_branch_c_success',
+            content:
+              '【判定成功】你眼疾手快，在他将怀里的《护卫日志》扔进火盆前抢了出来！',
+            nextId: 'act3_ending_perfect', // 抢救回日志也是完美结局
           },
           {
-            id: 'act3_fail_intimacy',
+            id: 'act3_outcome_observe_fail',
             type: 'normal',
             speaker: '系统',
-            content: '【判定失败】蔡福生察觉到了你的注视，变得更加谨慎。',
-            nextId: 'act3_partial_success',
+            content:
+              '【判定失败】你眼睁睁看着他把一本泛黄的册子扔进了火盆，化为灰烬。',
+            nextId: 'act3_ending_bad',
           },
 
-          // --- 成功分支 ---
-          // 雷霆一击成功路径
-          {
-            id: 'act3_branch_a',
-            type: 'normal',
-            speaker: '系统',
-            content: '手套脱落——赫然是六指！手背上有狰狞的狮纹伤疤！',
-            nextId: 'act3_branch_a_2',
-          },
-          {
-            id: 'act3_branch_a_2',
-            type: 'normal',
-            speaker: '陈灵儿',
-            avatar: '/static/avatars/chen_linger.png',
-            content: '六指、狮纹、假印章！蔡福生，人赃并获！',
-            nextId: 'act3_ending_perfect',
-          },
-
-          // 言语周旋成功路径
-          {
-            id: 'act3_branch_b_success',
-            type: 'normal',
-            speaker: '蔡福生',
-            avatar: '/static/npcs/cai_fusheng_boss.png',
-            content: '（脸色微变）陈捕快说笑了...他下意识地摸了摸左手袖口。',
-            nextId: 'act3_ending_good',
-          },
-
-          // 暗中观察成功路径
-          {
-            id: 'act3_branch_c_success',
-            type: 'normal',
-            speaker: '系统',
-            content: '你注意到他袖口下有一道狰狞的伤疤轮廓！这是决定性的证据！',
-            nextId: 'act3_ending_good',
-          },
-
-          // --- 部分成功分支 ---
-          {
-            id: 'act3_partial_success',
-            type: 'normal',
-            speaker: '系统',
-            content: '虽然行动不算完美，但你还是获得了一些线索。蔡福生被制服，但部分证据丢失。',
-            nextId: 'act3_ending_normal',
-          },
-
-          // --- 失败分支 ---
-          {
-            id: 'act3_ending_bad',
-            type: 'normal',
-            speaker: '系统',
-            content: '蔡福生销毁了关键证据后逃脱。你的努力付诸东流...',
-            nextId: 'act3_ending_bad_final',
-          },
-
-          // --- 结局节点 ---
+          // ---------------------------------------------------------
+          // 6. 最终结局
+          // ---------------------------------------------------------
           {
             id: 'act3_ending_perfect',
             type: 'end',
             speaker: '系统',
-            content: '完美！人赃并获，关键证据《护卫日志》完好无损。真相大白！',
-            endingId: 'ending_perfect',
-          },
-          {
-            id: 'act3_ending_good',
-            type: 'end',
-            speaker: '系统',
-            content: '成功！蔡福生被捕，虽然部分证据丢失，但主要目标达成。',
-            endingId: 'ending_good',
+            content:
+              '【结局：云开月明】\n蔡福生被当场拿获，那一包还没来得及销毁的迷药和藏在暗格里的《护卫日志》完好无损。你终于得知了父母的下落，登上了去往南洋的红头船。',
+            endingId: 'ending_perfect', // 🏆 完美结局
           },
           {
             id: 'act3_ending_normal',
             type: 'end',
             speaker: '系统',
-            content: '一般成功。蔡福生被捕，但关键证据下落不明，真相仍有隐晦。',
-            endingId: 'ending_normal',
+            content:
+              '【结局：古城守夜人】\n蔡福生因伪造信物被捕入狱，但他死不松口。因为缺乏关键证据《护卫日志》，你无法得知父母的生死，只能继续留在古城守望。',
+            endingId: 'ending_normal', // 🛡️ 普通结局
           },
           {
-            id: 'act3_ending_bad_final',
+            id: 'act3_ending_bad',
             type: 'end',
             speaker: '系统',
-            content: '失败。关键证据被销毁，蔡福生逃脱，你的父母之仇可能永远无法得报。',
-            endingId: 'ending_bad',
+            content:
+              '【结局：雨夜孤影】\n线索断了。虽然蔡福生被抓，但他狂笑着看着火盆里的灰烬。你赢了局，却输了家。',
+            endingId: 'ending_bad', // 🌧️ 悲剧结局
           },
         ],
       },
     },
 
-    // 兼容旧字段（已废弃）
-    dialogue: [],
     commonTasks: [],
-    /** @deprecated 使用 storylines[characterId].nodes 替代 */
     scriptNodes: [],
-    /** @deprecated 使用 commonTasks 替代 */
     tasks: [],
   },
 ]

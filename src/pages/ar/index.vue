@@ -26,17 +26,21 @@
 		<!-- 对话层 (z-index: 999) -->
 		<StoryDialogue ref="dialogueComponent" v-model:visible="gameStore.isDialogueVisible"
 			:script="gameStore.currentScript" :bg-image="isCameraAuth ? '' : bgImage" @option-selected="handleOptionSelected"
-			@dialogue-end="handleDialogueEnd" @line-change="handleLineChange" />
+			@dialogue-end="handleDialogueEnd" @line-change="handleLineChange" @present-request="handlePresentRequest" />
 	</view>
+
+	<!-- 物品选择弹窗 (z-index: 1000) -->
+	<InventoryModal v-model:visible="showItemSelector" mode="select" @select="handleItemSelection" @inspect="handleItemInspect" />
 </template>
 
 <script setup lang="ts">
-	import { ref, watch } from 'vue'
+	import { ref, watch, nextTick } from 'vue'
 	import { onLoad, onUnload } from '@dcloudio/uni-app'
 	import { useGameStore } from '../../stores/useGameStore'
 	import { jieyang } from '../../mock/jieyang'
 	import type { NPC, ScriptNode, StoryEnding } from '../../mock/types'
 	import StoryDialogue from '../../components/StoryDialogue.vue'
+	import InventoryModal from '../../components/InventoryModal.vue'
 
 	// 🌟 引入新的世界状态系统
 	import { resolveNpcId } from '../../mock/world_states'
@@ -54,6 +58,8 @@
 	const isImageLoading = ref<boolean>(true)
 	const hasImageError = ref<boolean>(false)
 	const currentScript = ref<ScriptNode[]>([])
+	const showItemSelector = ref<boolean>(false)
+	const currentPresentNode = ref<ScriptNode | null>(null)
 
 	// 路由参数
 	const routeParams = ref<{
@@ -317,23 +323,21 @@
 
 		let startNode : ScriptNode | null = null
 
-		// 优先检查：是否已完成该 NPC 任务？
-		const hasCompleted = checkNPCCompletion(currentNPC.value)
+		// 1. 获取存档
+		const savedNodeId = gameStore.getNPCProgress(currentNPC.value.id)
 
-		if (hasCompleted) {
-			// ✅ 已完成：随机进入闲聊模式
-			startNode = getRandomCompletedNode(scriptNodes)
-			if (startNode) {
-				console.log('任务已完成，进入闲聊模式:', startNode.id)
-			}
+		// 2. 优先尝试恢复存档 (Fix: 只要有存档且不是完结状态，优先继续剧情)
+		if (savedNodeId && savedNodeId !== 'completed_ending') {
+			startNode = scriptNodes.find(node => node.id === savedNodeId) || null
+			if (startNode) console.log('📖 读取存档恢复剧情进度:', savedNodeId)
 		}
 
-		// 如果没完成（或者没找到闲聊节点），则尝试读取存档
+		// 3. 如果没有存档，再检查是否已完成印章收集 (进入闲聊)
 		if (!startNode) {
-			const savedNodeId = gameStore.getNPCProgress(currentNPC.value.id)
-			if (savedNodeId) {
-				startNode = scriptNodes.find(node => node.id === savedNodeId) || null
-				if (startNode) console.log('读取存档恢复进度:', savedNodeId)
+			const hasCompleted = checkNPCCompletion(currentNPC.value)
+			if (hasCompleted) {
+				startNode = getRandomCompletedNode(scriptNodes)
+				if (startNode) console.log('☕️ 任务已完成且无进行中剧情，进入闲聊模式')
 			}
 		}
 
@@ -351,16 +355,97 @@
 
 		if (!startNode) return
 
-		// 构建脚本并显示
-		const initialScript = [transformNode(startNode)]
-
-		// 如果是普通剧情，继续加载后续线性节点；如果是闲聊(end类型)，这就只有一句
+		// =========================================================
+		// 🚀 [通用引擎升级] 智能跳转检查器
+		// 作用：无需硬编码，基于数据配置自动判断是否跳过当前节点
+		// =========================================================
 		let currentNode = startNode
-		while (currentNode.nextId && !currentNode.options && currentNode.type !== 'end') {
-			const nextNode = findNextNode(currentNode.nextId)
+		let jumpCount = 0
+		const MAX_JUMPS = 10
+
+		while (currentNode.jumpCondition && jumpCount < MAX_JUMPS) {
+			const condition = currentNode.jumpCondition
+			let shouldJump = false
+			let reason = ''
+
+			// 1. 检查线索 (Clues)
+			if (condition.requiredClue && gameStore.inventory.clues.includes(condition.requiredClue)) {
+				shouldJump = true
+				reason = `拥有线索: ${condition.requiredClue}`
+			}
+			// 2. 检查印章 (Seals)
+			else if (condition.requiredSeal && gameStore.inventory.seals.includes(condition.requiredSeal)) {
+				shouldJump = true
+				reason = `拥有印章: ${condition.requiredSeal}`
+			}
+			// 3. 检查物品 (Items)
+			else if (condition.requiredItem && gameStore.inventory.items.includes(condition.requiredItem)) {
+				shouldJump = true
+				reason = `拥有物品: ${condition.requiredItem}`
+			}
+
+			// 执行跳转
+			if (shouldJump) {
+				const nextNode = findNextNode(condition.nextId)
+				if (nextNode) {
+					console.log(`🔀 [剧情引擎] 自动跳转: ${currentNode.id} -> ${nextNode.id} (${reason})`)
+					currentNode = nextNode
+					jumpCount++
+				} else {
+					console.warn(`⚠️ [剧情引擎] 跳转目标不存在: ${condition.nextId}`)
+					break
+				}
+			} else {
+				break // 条件不满足，停留在当前节点
+			}
+		}
+
+		// 🚨 安全警告
+		if (jumpCount >= MAX_JUMPS) {
+			console.error('🚫 [剧情引擎] 检测到潜在的死循环，已强制停止跳转')
+		}
+
+		// 构建脚本并显示
+		const initialScript = [transformNode(currentNode)]
+
+		// 🔄 [升级版] 线性节点加载器（支持中途跳转）
+		let scriptNode = currentNode
+		// 安全计数器防止死循环
+		let loopSafeCount = 0
+
+		while (scriptNode.nextId && !scriptNode.options && scriptNode.type !== 'end' && loopSafeCount < 20) {
+			loopSafeCount++
+			let nextNode = findNextNode(scriptNode.nextId)
+
 			if (nextNode) {
+				// 🕵️‍♀️ [关键逻辑] 在加载下一个节点前，再次检查它是否满足跳转条件
+				// 这样即使存档在"获得印章"，加载到"调查提示"时也能自动跳过
+				if (nextNode.jumpCondition) {
+					const condition = nextNode.jumpCondition
+					let shouldJump = false
+
+					if (condition.requiredClue && gameStore.inventory.clues.includes(condition.requiredClue)) shouldJump = true
+					else if (condition.requiredSeal && gameStore.inventory.seals.includes(condition.requiredSeal)) shouldJump = true
+					else if (condition.requiredItem && gameStore.inventory.items.includes(condition.requiredItem)) shouldJump = true
+
+					if (shouldJump) {
+						console.log(`🔀 [流式跳转] 跳过节点 ${nextNode.id} -> ${condition.nextId}`)
+						const jumpTarget = findNextNode(condition.nextId)
+						if (jumpTarget) {
+							nextNode = jumpTarget
+						}
+					}
+				}
+
+				// 🆕 如果遇到特殊节点（check、present_item），停止线性加载
+				if (nextNode.type === 'check' || nextNode.type === 'present_item') {
+					// 即使停止加载，也要把这个特殊节点加进去，否则玩家看不见它
+					initialScript.push(transformNode(nextNode))
+					break
+				}
+
 				initialScript.push(transformNode(nextNode))
-				currentNode = nextNode
+				scriptNode = nextNode
 			} else {
 				break
 			}
@@ -512,6 +597,9 @@
 			currentScript.value = newScript
 			gameStore.currentScript = newScript
 
+			// 🚨 [新增] 强制触发首节点逻辑 (以防 Check 节点也有 Trigger)
+			handleLineChange(newScript[0])
+
 			// 延迟执行判定，让玩家看到判定内容
 			setTimeout(() => {
 				handleCheckNode(nextNode)
@@ -528,8 +616,8 @@
 		while (currentNode.nextId && !currentNode.options && currentNode.type !== 'end') {
 			const subsequentNode = findNextNode(currentNode.nextId)
 			if (subsequentNode) {
-				// 🆕 如果遇到判定节点，停止线性加载
-				if (subsequentNode.type === 'check') {
+				// 🆕 如果遇到特殊节点（check、present_item），停止线性加载
+				if (subsequentNode.type === 'check' || subsequentNode.type === 'present_item') {
 					break
 				}
 				const transformedSubsequentNode = transformNode(subsequentNode)
@@ -544,6 +632,13 @@
 		currentScript.value = newScript
 		gameStore.currentScript = newScript
 
+		// 🚨 [新增] 强制触发当前显示的第一行节点的 Trigger！
+		// 修复印章无法获取的核心 bug
+		if (newScript.length > 0 && newScript[0]) {
+			console.log('🔄 [系统] 强制执行首节点 Trigger:', newScript[0]?.id)
+			handleLineChange(newScript[0])
+		}
+
 		// 删除对 continueDialogue 的调用，避免双重重置问题
 		// StoryDialogue 组件会在 watch props.script 时自动重置 currentIndex = 0
 		// 这里的调用会导致索引被重置，然后立即触发结束条件
@@ -553,29 +648,116 @@
 	const handleLineChange = (line : any) => {
 		console.log('当前对话行变化:', line.id)
 
-		// ✅ 通用逻辑：检查是否有 trigger 触发器
-		if (line.trigger === 'grant_seal') {
-			// 确保当前 NPC 有关联的 sealId
-			if (currentNPC.value && currentNPC.value.sealId) {
-				// 1. 检查是否已经拿过了（防止重复弹窗）
-				const alreadyHas = gameStore.inventory.seals.includes(currentNPC.value.sealId)
+		// ✅ 检查是否有 trigger 触发器
+		if (line.trigger) {
+			switch (line.trigger) {
+				case 'grant_seal_one':
+					// 林文渊 - 儒学文脉章
+					if (!gameStore.inventory.seals.includes('seal_one')) {
+						gameStore.addSeal('seal_one')
+						gameStore.addItem('item_seal_one')
 
-				if (!alreadyHas) {
-					// 2. 调用 Store 添加印章 (内部会自动 saveProgress)
-					gameStore.addSeal(currentNPC.value.sealId)
+						// ✅ 仅提示，不弹窗打断
+						uni.showToast({ title: '获得：儒学文脉章(实物)', icon: 'none' })
 
-					// 3. UI 反馈
-					uni.showToast({
-						title: '印章已收入背包',
-						icon: 'success',
-						duration: 2000
-					})
-					console.log(`[Trigger] 触发奖励发放: ${currentNPC.value.sealId}`)
-				} else {
-					console.log(`[Trigger] 玩家已拥有印章，跳过发放`)
-				}
-			} else {
-				console.warn(`[Trigger] 触发了 grant_seal 但当前 NPC 没有 sealId`)
+						// ✅ 立即保存进度！防止玩家退出后回档
+						if (currentNPC.value) {
+							gameStore.saveNPCProgress(currentNPC.value.id, line.id)
+						}
+					}
+					break
+
+				case 'grant_seal_two':
+					// 陈狮魁 - 青狮非遗章
+					if (!gameStore.inventory.seals.includes('seal_two')) {
+						gameStore.addSeal('seal_two')
+						uni.showToast({
+							title: '获得【青狮非遗章】',
+							icon: 'success',
+							duration: 2000
+						})
+						console.log('[Trigger] 获得印章二')
+					}
+					break
+
+				case 'grant_seal_fake':
+					// 蔡福生 - 伪造的印章（不加入印章进度）
+					if (!gameStore.inventory.items.includes('item_seal_three_fake')) {
+						gameStore.addItem('item_seal_three_fake')
+						uni.showToast({ title: '获得：可疑的印章', icon: 'none' })
+
+						// 🚨 [Fix 1] 立即保存进度！
+						if (currentNPC.value) {
+							gameStore.saveNPCProgress(currentNPC.value.id, line.id)
+						}
+						console.log('[Trigger] 获得伪造印章并保存进度')
+					}
+					break
+
+				case 'grant_clue_six_fingers':
+					// 线索：六指传说
+					if (!gameStore.inventory.clues.includes('clue_six_fingers')) {
+						gameStore.addClue('clue_six_fingers')
+						uni.showToast({
+							title: '获得关键线索：六指传说',
+							icon: 'none',
+							duration: 2000
+						})
+						console.log('[Trigger] 获得线索：六指传说')
+					}
+					break
+
+				case 'grant_clue_lion_scar':
+					// 线索：狮纹伤疤
+					if (!gameStore.inventory.clues.includes('clue_lion_scar')) {
+						gameStore.addClue('clue_lion_scar')
+						uni.showToast({
+							title: '获得关键线索：狮纹伤疤',
+							icon: 'none',
+							duration: 2000
+						})
+						console.log('[Trigger] 获得线索：狮纹伤疤')
+					}
+					break
+
+				case 'grant_clue_gloves':
+					// 线索：手套（如果有定义）
+					// TODO: 如果 clues 中定义了 gloves 相关线索，可以在这里添加
+					console.log('[Trigger] 线索：手套 - 暂未实现')
+					break
+
+				case 'chapter_complete_perfect':
+					// 完美结局达成
+					console.log('[Trigger] 完美结局达成')
+					if (currentNPC.value && routeParams.value.poiId) {
+						gameStore.completeMission(routeParams.value.poiId)
+						gameStore.saveNPCProgress(currentNPC.value.id, 'completed_ending')
+						gameStore.clearTargetLocation()
+						uni.showToast({
+							title: '完美结局达成',
+							icon: 'success',
+							duration: 2000
+						})
+					}
+					break
+
+				case 'chapter_complete_normal':
+					// 普通结局达成
+					console.log('[Trigger] 普通结局达成')
+					if (currentNPC.value && routeParams.value.poiId) {
+						gameStore.completeMission(routeParams.value.poiId)
+						gameStore.saveNPCProgress(currentNPC.value.id, 'completed_ending')
+						gameStore.clearTargetLocation()
+						uni.showToast({
+							title: '章节完成',
+							icon: 'none',
+							duration: 2000
+						})
+					}
+					break
+
+				default:
+					console.log(`[Trigger] 未处理的触发器: ${line.trigger}`)
 			}
 		}
 
@@ -590,39 +772,111 @@
 		}
 	}
 
-	// 处理对话结束
-	const handleDialogueEnd = () => {
-		console.log('AR对话结束')
+	// 处理举证请求
+	const handlePresentRequest = (node: any) => {
+		console.log('[AR页面] 收到举证请求:', node)
+		currentPresentNode.value = node
 
-		// 隐藏对话
-		gameStore.isDialogueVisible = false
+		// 打开物品选择器
+		showItemSelector.value = true
+	}
 
-		// 显示完成提示
-		uni.showToast({
-			title: '剧情结束',
-			icon: 'success',
-			duration: 1500
-		})
+	// 处理物品选择
+	const handleItemSelection = (selectedItemId: string) => {
+		console.log('[AR页面] 玩家选择了物品:', selectedItemId)
 
-		setTimeout(() => {
-			// 🚨 核心修复：更新全局状态
-			// 如果当前有 NPC 且有 POI ID，标记该 POI 为已完成
-			if (currentNPC.value && routeParams.value.poiId) {
-				console.log('✅ 提交任务状态:', routeParams.value.poiId)
+		// 关闭物品选择器
+		showItemSelector.value = false
 
-				// 1. 完成当前 POI (让地图变蓝)
-				gameStore.completeMission(routeParams.value.poiId)
+		if (!currentPresentNode.value) {
+			console.error('没有当前举证节点')
+			return
+		}
 
-				// 2. 如果是结局 NPC (如蔡福生)，确保保存了 NPC 进度以防回滚
-				// 使用特定的结束标记，比如 'completed_ending'
-				gameStore.saveNPCProgress(currentNPC.value.id, 'completed_ending')
+		const node = currentPresentNode.value
 
-				// 3. 如果是结局NPC，清除导航目标（终局完成）
-				gameStore.clearTargetLocation()
+		// 使用 Store 的 validatePresentation 方法验证
+		const isCorrect = gameStore.validatePresentation(selectedItemId, node.requiredItemId || '')
+
+		// 根据验证结果选择下一个节点
+		const nextNodeId = isCorrect ? node.correctNextId : node.wrongNextId
+
+		if (nextNodeId) {
+			// 显示反馈
+			uni.showToast({
+				title: isCorrect ? '出示正确！' : '出示错误...',
+				icon: isCorrect ? 'success' : 'none',
+				duration: 1500
+			})
+
+			// 延迟加载下一个节点
+			setTimeout(() => {
+				loadNextNode(nextNodeId)
+			}, 1500)
+		} else {
+			console.error('举证节点没有配置跳转节点:', node.id)
+		}
+
+		// 清空当前举证节点
+		currentPresentNode.value = null
+	}
+
+	// 处理物品调查
+	const handleItemInspect = (itemId: string) => {
+		console.log('[AR页面] 玩家调查物品:', itemId)
+
+		// ✅ 强制关闭背包弹窗
+		showItemSelector.value = false
+
+		// 调用 Store 的 inspectItem 方法
+		const result = gameStore.inspectItem(itemId)
+
+		if (result.success) {
+			// 构造内心独白脚本
+			const inspectNode = {
+				id: 'inspect_' + itemId,
+				type: 'normal' as const,
+				speaker: '陈灵儿',
+				avatar: '/static/avatars/chen_linger.png',
+				content: result.inspectText || '仔细查看后，你发现了什么。'
 			}
 
+			console.log('播放调查独白:', inspectNode.content)
+
+			// ✅ 确保对话框层级最高
+			// 重置脚本数组，确保组件能监听到变化
+			gameStore.currentScript = []
+
+			// 使用 nextTick 确保在下一个 DOM 更新周期执行
+			nextTick(() => {
+				// 播放调查结果作为内心独白
+				const transformedNode = transformNode(inspectNode)
+				gameStore.currentScript = [transformedNode]
+				gameStore.isDialogueVisible = true
+			})
+		} else {
+			// 物品不可调查
+			uni.showToast({
+				title: '这件物品似乎没什么特别的',
+				icon: 'none',
+				duration: 2000
+			})
+		}
+	}
+
+	// 处理对话结束
+	const handleDialogueEnd = () => {
+		console.log('AR对话结束 - 准备退出页面')
+
+		// 关闭对话框
+		gameStore.isDialogueVisible = false
+
+		// ✅ [修复] 无条件退出AR页面，确保不会卡死
+		console.log('[AR页面] 触发退出跳转...')
+		setTimeout(() => {
 			uni.navigateBack()
-		}, 1500)
+			console.log('[AR页面] 已执行 navigateBack()')
+		}, 100)
 	}
 
 	// 图片加载成功处理
@@ -668,6 +922,18 @@
 	// 页面加载
 	onLoad((options) => {
 		console.log('AR页面加载，路由参数:', options)
+
+		// 🛠️ 开发调试功能：重置游戏数据
+		if (options && options.reset === 'true') {
+			console.warn('⚠️ 检测到重置参数，正在清除所有游戏数据...')
+			gameStore.resetGame()
+			uni.showToast({
+				title: '游戏数据已重置',
+				icon: 'success',
+				duration: 2000
+			})
+			console.log('✅ 游戏数据重置完成')
+		}
 
 		// 解析路由参数
 		if (options) {

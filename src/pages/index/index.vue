@@ -82,7 +82,7 @@
 			</view>
 		</view>
 
-		<InventoryModal v-model:visible="showInventoryModal" @close="showInventoryModal = false" />
+			<InventoryModal v-model:visible="showInventoryModal" @close="showInventoryModal = false" @inspect="handleItemInspect" />
 
 		<!-- 剧情对话组件 -->
 		<StoryDialogue v-model:visible="gameStore.isDialogueVisible" :script="gameStore.currentScript"
@@ -94,10 +94,11 @@
 </template>
 
 <script setup lang="ts">
-	import { computed, ref, watch } from 'vue'
+	import { computed, ref, watch, nextTick } from 'vue'
 	import { onLoad } from '@dcloudio/uni-app'
 	import { useGameStore } from '../../stores/useGameStore'
 	import { gameData } from '../../mock/gameData'
+	import type { ScriptNode } from '../../mock/types'
 	import CustomNavbar from '@/components/CustomNavbar.vue'
 	import InventoryModal from '@/components/InventoryModal.vue'
 	import StoryDialogue from '@/components/StoryDialogue.vue'
@@ -379,6 +380,66 @@
 	const openInventory = () => { showInventoryModal.value = true }
 	const goToCompass = () => { uni.navigateTo({ url: '/pages/compass/index' }) }
 	const goToTest = () => { uni.navigateTo({ url: '/pages/test/test' }) }
+
+	// 处理物品调查
+	const handleItemInspect = (itemId: string) => {
+		console.log('[地图页] 玩家调查物品:', itemId)
+
+		// 关闭背包弹窗
+		showInventoryModal.value = false
+
+		// 调用 Store 的 inspectItem 方法
+		const result = gameStore.inspectItem(itemId)
+
+		if (result.success) {
+			// 构造内心独白脚本
+			let inspectText = result.inspectText
+
+			// ✅ [兜底逻辑] 如果 Store 返回的文本为空，根据 itemId 提供默认文本
+			if (!inspectText) {
+				switch (itemId) {
+					case 'item_seal_one':
+						inspectText = '印章侧面有一道细微的裂痕，似乎是某种机关。这个发现很重要！'
+						break
+					case 'item_seal_three_fake':
+						inspectText = '这印章做工过于光滑，没有任何岁月痕迹，像是个赝品。蔡福生在欺骗我！'
+						break
+					case 'item_seal_two':
+						inspectText = '青狮印章的纹路十分精美，蕴含着浓厚的潮汕文化底蕴。'
+						break
+					default:
+						inspectText = '仔细查看这件物品，似乎隐藏着某种秘密...'
+				}
+			}
+
+			const inspectNode: ScriptNode = {
+				id: 'inspect_' + itemId,
+				type: 'normal',
+				speaker: '陈灵儿',
+				avatar: '/static/avatars/chen_linger.png',
+				content: inspectText
+			}
+
+			console.log('播放调查独白:', inspectNode.content)
+
+			// 重置脚本数组，确保组件能监听到变化
+			gameStore.currentScript = []
+
+			// 使用 nextTick 确保在下一个 DOM 更新周期执行
+			nextTick(() => {
+				// 播放调查结果作为内心独白
+				gameStore.currentScript = [inspectNode]
+				gameStore.isDialogueVisible = true
+			})
+		} else {
+			// 物品不可调查
+			uni.showToast({
+				title: '这件物品似乎没什么特别的',
+				icon: 'none',
+				duration: 2000
+			})
+		}
+	}
 	const onCharacterChange = (e : any) => {
 		const newIndex = e.detail?.current
 		if (typeof newIndex === 'number') selectedCharacterIndex.value = newIndex

@@ -13,15 +13,45 @@
 		</view>
 
 		<view v-else-if="currentLine" class="dialogue-layer">
+			<!-- 选择分支 -->
 			<ChoicePanel v-if="hasOptions" :options="currentLine!.options!" @select="handleOptionSelect" />
 
+			<!-- 举证节点 - 显示出示证物按钮 -->
+			<view v-else-if="currentLine.type === 'present_item'" class="present-item-layer">
+				<DialogueBox
+					:key="currentLine!.id"
+					:content="currentLine?.content || ''"
+					:name="currentLine?.name || ''"
+					:avatar="currentLine?.avatar"
+					:speaker-type="getSpeakerType()"
+					:has-options="false"
+					@next="() => {}"
+				/>
+				<PresentPanel :hint="currentLine.presentHint" @present="handlePresentItem" />
+			</view>
+
+			<!-- 数值判定节点 - 显示判定中... -->
+			<view v-else-if="currentLine.type === 'check'" class="check-layer">
+				<DialogueBox
+					:key="currentLine!.id"
+					:content="currentLine?.content || ''"
+					:name="currentLine?.name || ''"
+					:avatar="currentLine?.avatar"
+					:speaker-type="getSpeakerType()"
+					:has-options="false"
+					@next="() => {}"
+				/>
+				<CheckIndicator />
+			</view>
+
+			<!-- 普通对话节点 -->
 			<DialogueBox
-				v-if="!hasOptions"
+				v-else
 				:key="currentLine!.id"
 				:content="currentLine?.content || ''"
 				:name="currentLine?.name || ''"
 				:avatar="currentLine?.avatar"
-				:speaker-type="(currentLine?.speakerType as 'narrator' | 'player' | 'npc') || 'narrator'"
+				:speaker-type="getSpeakerType()"
 				@next="handleDialogueTap"
 			/>
 		</view>
@@ -33,11 +63,13 @@
 </template>
 
 <script setup lang="ts">
-	import { ref, computed, watch } from 'vue'
+	import { ref, computed, watch, nextTick } from 'vue'
 	import DialogueBox from './story/DialogueBox.vue'
 	import ChoicePanel from './story/ChoicePanel.vue'
 	import TaskPanel from './story/TaskPanel.vue'
 	import EndingCard from './story/EndingCard.vue'
+	import PresentPanel from './story/PresentPanel.vue'
+	import CheckIndicator from './story/CheckIndicator.vue'
 	import type { StoryEnding } from '@/mock/types'
 
 	// 接口定义
@@ -57,15 +89,27 @@
 	interface DialogueLine {
 		id : string
 		speakerType : 'player' | 'npc' | 'narrator' | 'task'
+		speaker?: string  // 新增：说话者名称（用于识别"系统"）
 		name : string
 		avatar ?: string
 		content : string
 		options ?: DialogueOption[]
 		task ?: Task
 		ending ?: StoryEnding
-		type ?: 'end'
+		type?: 'end' | 'normal' | 'choice' | 'task' | 'check' | 'present_item'  // 扩展类型
 		nextId ?: string
 		failId ?: string
+		// 举证相关字段
+		requiredItemId?: string
+		correctNextId?: string
+		wrongNextId?: string
+		presentHint?: string
+		// 判定相关字段
+		condition?: {
+			courage?: number
+			clue?: number
+			intimacy?: number
+		}
 	}
 
 	// Props 定义
@@ -85,6 +129,7 @@
 		'option-selected' : [option: DialogueOption]
 		'dialogue-end' : []
 		'line-change' : [line: DialogueLine]
+		'present-request' : [node: DialogueLine]  // 新增：举证请求
 	}>()
 
 	// 响应式数据
@@ -114,8 +159,24 @@
 	})
 
 	// 方法
+	// 获取说话者类型，支持系统提示样式
+	const getSpeakerType = (): 'narrator' | 'player' | 'npc' => {
+		// 如果speaker字段为"系统"，返回narrator样式
+		if (currentLine.value?.speaker === '系统') {
+			return 'narrator'
+		}
+		// 否则使用原有的speakerType
+		return (currentLine.value?.speakerType as 'narrator' | 'player' | 'npc') || 'narrator'
+	}
+
 	const onOverlayTap = () => {
 		handleDialogueTap()
+	}
+
+	// 处理举证请求
+	const handlePresentItem = () => {
+		console.log('[举证请求] 触发出示证物')
+		emit('present-request', currentLine.value!)
 	}
 
 	// 统一处理点击逻辑
@@ -123,6 +184,11 @@
 		if (showTask.value) return
 		if (showTrueEndingCard.value) return // 真结局必须点卡片按钮
 		if (hasOptions.value) return
+
+		// 如果是举证或判定节点，不处理点击
+		if (currentLine.value?.type === 'present_item' || currentLine.value?.type === 'check') {
+			return
+		}
 
 		// 🔥 [关键修改] 如果是普通结束节点，点击直接退出
 		if (isNormalEnd.value) {
@@ -216,6 +282,12 @@
 	watch(() => props.script, (newScript) => {
 		if (newScript && newScript.length > 0) {
 			currentIndex.value = 0
+
+			// 🚨 [修复] 立即通知父组件当前行已变化，确保 Trigger 能被触发！
+			// 使用 nextTick 确保在 DOM 更新后触发事件
+			nextTick(() => {
+				emit('line-change', newScript[0] as DialogueLine)
+			})
 		}
 	})
 
@@ -236,7 +308,7 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		z-index: 1000;
+		z-index: 1200; // 确保在所有UI之上
 
 		.dialogue-background {
 			position: absolute;
@@ -256,6 +328,17 @@
 			background: rgba(0, 0, 0, 0.7);
 			z-index: 1;
 		}
+	}
+
+	// 特殊节点布局
+	.present-item-layer,
+	.check-layer {
+		position: relative;
+		width: 100%;
+		height: 100vh;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
 	}
 
 	// 跳过按钮

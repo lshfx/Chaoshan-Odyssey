@@ -218,12 +218,15 @@ export const useGameStore = defineStore('game', () => {
     // 解锁第一个POI（揭阳学宫）
     unlockPOI('jieyang_confucian_temple')
 
-    // 添加测试数据到背包
-    addTestInventory()
+    // 添加初始关键道具
+    addItem('item_badge') // 捕快腰牌 - 陈灵儿剧本关键信物
+    addItem('item_father_notes') // 父亲的笔记 - 背景信息
+    addItem('item_half_letter') // 半块侨批 - 剧情驱动道具
 
     console.log('游戏初始化完成:', {
       character: selectedCharacter.name,
-      city: currentCity.value
+      city: currentCity.value,
+      initialItems: inventory.value.items
     })
   }
 
@@ -296,8 +299,8 @@ export const useGameStore = defineStore('game', () => {
       // 保存进度到本地存储
       saveProgress()
 
-      // 检查是否需要解锁新的POI
-      checkAndUnlockNextPOI()
+      // ❌ [修改] 注释掉自动导航！不要一拿印章就导航！
+      // checkAndUnlockNextPOI()
 
       // 检查是否可以获得老爷保号章
       checkFinalSealAvailability()
@@ -336,6 +339,14 @@ export const useGameStore = defineStore('game', () => {
     if (!inventory.value.clues.includes(clueId)) {
       inventory.value.clues.push(clueId)
       console.log('获得线索:', clueId)
+    }
+  }
+
+  // 添加物品到背包
+  const addItem = (itemId: string) => {
+    if (!inventory.value.items.includes(itemId)) {
+      inventory.value.items.push(itemId)
+      console.log('[Store] 获得物品:', itemId)
     }
   }
 
@@ -735,10 +746,18 @@ export const useGameStore = defineStore('game', () => {
   // --- Phase 6: Interactive Narrative Actions ---
 
   // Update Stats
+  // Update Stats
   const updateStat = (type: StatType, value: number) => {
     if (Object.prototype.hasOwnProperty.call(playerStats.value, type)) {
-      playerStats.value[type as keyof typeof playerStats.value] += value
-      console.log(`[Stats Update] ${type}: ${playerStats.value[type as keyof typeof playerStats.value]} (Change: ${value})`)
+      const key = type as keyof typeof playerStats.value
+      const oldValue = playerStats.value[key]
+
+      playerStats.value[key] += value
+
+      const newValue = playerStats.value[key]
+
+      // 📊 [监控] 实时打印数值变化
+      console.log(`📊 [数值变更] ${type}: ${oldValue} ➡️ ${newValue} (变动: ${value > 0 ? '+' : ''}${value})`)
     }
   }
 
@@ -751,10 +770,31 @@ export const useGameStore = defineStore('game', () => {
   }
 
   // Check Conditions (e.g., { courage: 1 } -> true if courage >= 1)
+  // 核心判定系统 (Smart Check)
   const checkCondition = (conditions: Partial<typeof playerStats.value>): boolean => {
     for (const key in conditions) {
+      // 🕵️‍♀️ [Hotfix] 线索判定特权：直接查背包！
+      // 解决"明明有线索却判定失败"的 Bug
+      if (key === 'clue') {
+        const requiredCount = conditions[key] || 0
+        const actualCount = inventory.value.clues.length
+
+        console.log(`[判定] 检查线索: 背包拥有 ${actualCount} / 需要 ${requiredCount}`)
+
+        if (actualCount < requiredCount) {
+          return false
+        }
+        continue // 线索达标，继续检查下一个属性
+      }
+
+      // 其他属性 (courage, intimacy) 继续查数值
       const k = key as keyof typeof playerStats.value
-      if (playerStats.value[k] < (conditions[k] || 0)) {
+      const currentValue = playerStats.value[k]
+      const requiredValue = conditions[k] || 0
+
+      console.log(`[判定] 检查属性 ${key}: 当前 ${currentValue} / 需要 ${requiredValue}`)
+
+      if (currentValue < requiredValue) {
         return false
       }
     }
@@ -768,22 +808,34 @@ export const useGameStore = defineStore('game', () => {
   }
 
   // 结局判定系统
+  // 结局判定系统
   const checkEnding = (): string => {
     const { courage, clue, intimacy } = playerStats.value
-    console.log('Calculating Ending with stats:', playerStats.value)
+    const inventoryClues = inventory.value.clues.length // 真实背包线索数
 
-    // 优先级 1: 悲剧结局（亲密度太低或果敢度不足）
+    console.log('============== 🏁 结局判定报告 🏁 ==============')
+    console.log(`💪 果敢值 (Courage): ${courage} (判定线: >=1)`)
+    console.log(`❤️ 亲密值 (Intimacy): ${intimacy} (判定线: >=0)`)
+    console.log(`🔍 线索值 (Stats):    ${clue} (判定线: >=2)`)
+    console.log(`🎒 背包线索 (Real):   ${inventoryClues} (备用判定依据)`)
+    console.log('==================================================')
+
+    // 优先级 1: 悲剧结局
     if (intimacy < 0 || courage < 0) {
-      return 'ending_bad' // 雨夜孤影
+      console.log('❌ 判定结果: 悲剧结局 (属性过低)')
+      return 'ending_bad'
     }
 
-    // 优先级 2: 完美结局（需要高线索值和果敢度）
-    if (clue >= 2 && courage >= 1) {
-      return 'ending_perfect' // 云开月明
+    // 优先级 2: 完美结局
+    // 注意：建议同时参考 inventoryClues 以防数值未更新 Bug
+    if ((clue >= 2 || inventoryClues >= 2) && courage >= 1) {
+      console.log('🏆 判定结果: 完美结局 (条件达成)')
+      return 'ending_perfect'
     }
 
-    // 默认：普通结局（古诚守夜人）
-    return 'ending_normal' // 古城守夜人
+    // 默认
+    console.log('🛡️ 判定结果: 普通结局')
+    return 'ending_normal'
   }
 
   // 任务状态检查（普通NPC任务用）
@@ -836,6 +888,45 @@ export const useGameStore = defineStore('game', () => {
     }
 
     return undefined
+  }
+
+  // --- AVG侦探解谜核心逻辑 ---
+
+  // 调查物品动作
+  const inspectItem = (itemId: string): { success: boolean; inspectText?: string; clueId?: string } => {
+    // 从当前城市数据中查找物品
+    const allItems = [...(currentCityData.value.items || [])]
+    const item = allItems.find(item => item.id === itemId)
+
+    if (!item) {
+      console.error(`[调查物品] 物品不存在: ${itemId}`)
+      return { success: false }
+    }
+
+    if (!item.inspectable) {
+      console.log(`[调查物品] 物品不可调查: ${itemId}`)
+      return { success: false }
+    }
+
+    // 如果有关联线索，自动添加到背包
+    if (item.relatedClueId) {
+      addClue(item.relatedClueId)
+      console.log(`[调查物品] 获得线索: ${item.relatedClueId}`)
+    }
+
+    console.log(`[调查物品] 调查完成: ${itemId}`)
+    return {
+      success: true,
+      inspectText: item.inspectText,
+      clueId: item.relatedClueId
+    }
+  }
+
+  // 验证举证动作
+  const validatePresentation = (presentedItemId: string, requiredItemId: string): boolean => {
+    const isValid = presentedItemId === requiredItemId
+    console.log(`[举证验证] ${presentedItemId} vs ${requiredItemId} = ${isValid}`)
+    return isValid
   }
 
   // 计算与目标的距离（米）
@@ -924,6 +1015,13 @@ export const useGameStore = defineStore('game', () => {
 
     // NPC进度管理
     saveNPCProgress,
-    getNPCProgress
+    getNPCProgress,
+
+    // AVG侦探解谜核心逻辑
+    inspectItem,
+    validatePresentation,
+
+    // 物品管理
+    addItem
   }
 })

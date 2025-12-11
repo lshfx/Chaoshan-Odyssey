@@ -125,6 +125,11 @@ export interface Seal {
   isFinalSeal?: boolean
   unlockRequirement?: string[]
   specialFeature?: string
+
+  // ✨ 新增：调查属性
+  inspectable?: boolean;      // 是否可调查
+  inspectText?: string;       // 调查时发现的细节描述
+  relatedClueId?: string;     // 调查后自动获得的线索ID
 }
 
 export interface Clue {
@@ -144,7 +149,18 @@ export interface Item {
   name: string
   description: string
   icon: string
-  type: 'document' | 'identity' | 'heirloom' | 'special' | 'consumable'
+  type: 'document' | 'identity' | 'heirloom' | 'special' | 'consumable' | 'evidence'
+
+  // ✨ 新增：调查属性
+  inspectable?: boolean;      // 是否可调查
+  inspectImage?: string;      // 调查时显示的大图 (如果不填则用 icon)
+  inspectText?: string;       // 调查时发现的细节描述 (例如："印章侧面光滑无纹路...")
+  relatedClueId?: string;     // 调查后自动获得的线索ID
+
+  // ✨ 新增：证物属性
+  isEvidence?: boolean;       // 是否可作为证物出示
+  canPresent?: string[];      // 可向哪些NPC出示 (NPC ID列表)
+  presentEffect?: string;     // 出示时的效果描述
 }
 
 export interface GameFlow {
@@ -194,7 +210,7 @@ export interface StoryEnding {
 
 export interface ScriptNode {
   id: string
-  type: 'normal' | 'choice' | 'end' | 'task' | 'check' // Added 'task' and 'check'
+  type: 'normal' | 'choice' | 'end' | 'task' | 'check' | 'present_item' // Added 'task', 'check' and 'present_item'
   speaker?: string
   avatar?: string
   content?: string
@@ -208,6 +224,22 @@ export interface ScriptNode {
     clue?: number;
     intimacy?: number;
   };
+
+  // ✨ 新增：举证相关字段 (仅当 type === 'present_item' 时有效)
+  requiredItemId?: string;    // 正确答案的物品 ID
+  correctNextId?: string;     // 举证正确后的跳转节点 ID
+  wrongNextId?: string;       // 举证错误后的跳转节点 ID (NPC表示困惑)
+  requiredClueId?: string;    // 备用：如果是出示线索而不是物品
+  presentHint?: string;       // 提示文本，引导玩家出示正确证物
+
+  // ✨ 新增：通用跳转条件系统
+  jumpCondition?: {
+    requiredClue?: string;     // 如果背包中有此线索 (inventory.clues)
+    requiredSeal?: string;     // 如果背包中有此印章 (inventory.seals)
+    requiredItem?: string;     // 如果背包中有此物品 (inventory.items)
+    nextId: string;           // 则直接跳转到此节点
+  }
+
   options?: Array<{
     label: string
     text?: string

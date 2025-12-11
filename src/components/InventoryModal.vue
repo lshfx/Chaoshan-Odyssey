@@ -71,6 +71,18 @@
             />
             <text class="detail-description">{{ selectedItem?.description || '暂无详细描述' }}</text>
           </view>
+          <!-- 操作按钮区域 -->
+          <view class="detail-actions">
+            <!-- 选择模式：出示此物按钮 -->
+            <view v-if="props.mode === 'select'" class="select-btn" @tap.stop="handleSelect">
+              <text class="select-text">📤 出示此物</text>
+            </view>
+
+            <!-- 调查模式：调查按钮 -->
+            <view v-else-if="selectedItem?.inspectable" class="inspect-btn" @tap.stop="inspectItem">
+              <text class="inspect-text">🔍 调查</text>
+            </view>
+          </view>
         </view>
       </view>
     </view>
@@ -83,14 +95,19 @@ import { useGameStore } from '@/stores/useGameStore'
 
 interface Props {
   visible: boolean
+  mode?: 'inspect' | 'select' // 新增：支持选择模式
 }
 
 interface Emits {
   (e: 'close'): void
   (e: 'update:visible', value: boolean): void
+  (e: 'select', itemId: string): void
+  (e: 'inspect', itemId: string): void
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  mode: 'inspect' // 默认为调查模式
+})
 const emit = defineEmits<Emits>()
 
 const gameStore = useGameStore()
@@ -129,6 +146,22 @@ const hideItemDetail = () => {
   selectedItem.value = null
 }
 
+// 调查物品
+const inspectItem = () => {
+  if (selectedItem.value && selectedItem.value.inspectable) {
+    emit('inspect', selectedItem.value.id)
+  }
+}
+
+// 处理选择物品（出示）
+const handleSelect = () => {
+  if (!selectedItem.value) return
+
+  console.log('🎒 背包操作: 确认出示物品', selectedItem.value.id)
+  emit('select', selectedItem.value.id) // 关键：通知父组件
+  closeModal() // 出示后关闭弹窗
+}
+
 // 关闭模态框
 const closeModal = () => {
   emit('update:visible', false)
@@ -155,7 +188,7 @@ watch(() => props.visible, (newVal) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 2000; // 修复：必须高于 StoryDialogue 的 z-index: 1200
   backdrop-filter: blur(5rpx);
 }
 
@@ -399,6 +432,58 @@ watch(() => props.visible, (newVal) => {
     color: #606266;
     line-height: 1.6;
     text-align: justify;
+  }
+
+  .detail-actions {
+    margin-top: 30rpx;
+    display: flex;
+    justify-content: center;
+  }
+
+  .inspect-btn {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    padding: 20rpx 40rpx;
+    border-radius: 50rpx;
+    display: flex;
+    align-items: center;
+    gap: 10rpx;
+    box-shadow: 0 4rpx 15rpx rgba(76, 175, 80, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:active {
+      transform: scale(0.95);
+      box-shadow: 0 2rpx 8rpx rgba(76, 175, 80, 0.3);
+    }
+
+    .inspect-text {
+      font-size: 28rpx;
+      font-weight: 600;
+    }
+  }
+
+  .select-btn {
+    background: linear-gradient(135deg, #FF6B6B, #EE5A24); // 主色调，醒目的橙红色
+    color: white;
+    padding: 20rpx 40rpx;
+    border-radius: 50rpx;
+    display: flex;
+    align-items: center;
+    gap: 10rpx;
+    box-shadow: 0 4rpx 15rpx rgba(238, 90, 36, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:active {
+      transform: scale(0.95);
+      box-shadow: 0 2rpx 8rpx rgba(238, 90, 36, 0.3);
+    }
+
+    .select-text {
+      font-size: 28rpx;
+      font-weight: 600;
+    }
   }
 }
 </style>
