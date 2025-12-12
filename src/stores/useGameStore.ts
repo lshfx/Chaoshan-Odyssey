@@ -497,20 +497,31 @@ export const useGameStore = defineStore('game', () => {
         currentCity: currentCity.value,
         currentUser: currentUser.value,
         inventory: inventory.value,
-        missionStatus: missionStatus.value
+        missionStatus: missionStatus.value,
+        // 🔥 核心修复：保存 storyStage 和 unlockedPoiIds
+        storyStage: storyStage.value,
+        unlockedPoiIds: Array.from(unlockedPoiIds.value), // Set转Array
+        completedPoiIds: completedPoiIds.value,
+        playerStats: playerStats.value,
+        storyHistory: storyHistory.value,
+        npcProgress: npcProgress.value
       }
       uni.setStorageSync('chaoshan_odyssey_progress', gameData)
-      console.log('游戏进度已保存')
+      console.log('✅ 游戏进度已保存', {
+        storyStage: storyStage.value,
+        unlockedPoiCount: unlockedPoiIds.value.length
+      })
     } catch (error) {
-      console.error('保存进度失败:', error)
+      console.error('❌ 保存进度失败:', error)
     }
   }
 
   // 加载游戏进度
-  const loadProgress = () => {
+  const loadProgress = (): boolean => {
     try {
       const savedData = uni.getStorageSync('chaoshan_odyssey_progress')
       if (savedData) {
+        // 🔥 核心修复：恢复所有关键状态
         currentCity.value = savedData.currentCity || 'jieyang'
         currentUser.value = savedData.currentUser || null
         inventory.value = savedData.inventory || {
@@ -518,15 +529,52 @@ export const useGameStore = defineStore('game', () => {
           clues: [],
           items: []
         }
-        missionStatus.value = savedData.missionStatus || {
-          currentPhase: 'ice_breaking',
-          completedTasks: [],
-          unlockedPOIs: [],
-          currentObjective: '选择角色，开始游戏',
-          gameStarted: false,
-          gameCompleted: false
+        // 🔥 [关键修复] 必须正确恢复任务状态，确保每个字段都被正确赋值
+        const savedMissionStatus = savedData.missionStatus
+        if (savedMissionStatus) {
+          // 逐字段恢复，确保 Vue 的响应性
+          missionStatus.value.currentPhase = savedMissionStatus.currentPhase || 'ice_breaking'
+          missionStatus.value.completedTasks = savedMissionStatus.completedTasks || []
+          missionStatus.value.unlockedPOIs = savedMissionStatus.unlockedPOIs || []
+          missionStatus.value.currentObjective = savedMissionStatus.currentObjective || '选择角色，开始游戏'
+          missionStatus.value.gameStarted = savedMissionStatus.gameStarted || false
+          missionStatus.value.gameCompleted = savedMissionStatus.gameCompleted || false
+
+          console.log('✅ 任务状态已恢复:', {
+            gameStarted: missionStatus.value.gameStarted,
+            currentPhase: missionStatus.value.currentPhase,
+            unlockedPOIs: missionStatus.value.unlockedPOIs.length
+          })
+        } else {
+          // 没有存档的任务状态，使用默认值
+          missionStatus.value = {
+            currentPhase: 'ice_breaking',
+            completedTasks: [],
+            unlockedPOIs: [],
+            currentObjective: '选择角色，开始游戏',
+            gameStarted: false,
+            gameCompleted: false
+          }
         }
-        console.log('游戏进度已加载')
+
+        // 🔥 核心修复：恢复 storyStage（默认为0）
+        storyStage.value = savedData.storyStage ?? 0
+
+        // 🔥 核心修复：恢复 unlockedPoiIds（Array转Set）
+        unlockedPoiIds.value = new Set(savedData.unlockedPoiIds || [])
+
+        // 恢复其他状态
+        completedPoiIds.value = savedData.completedPoiIds || []
+        playerStats.value = savedData.playerStats || { courage: 0, clue: 0, intimacy: 0 }
+        storyHistory.value = savedData.storyHistory || []
+        npcProgress.value = savedData.npcProgress || {}
+
+        console.log('✅ 游戏进度已加载', {
+          storyStage: storyStage.value,
+          unlockedPoiCount: unlockedPoiIds.value.length,
+          gameStarted: missionStatus.value.gameStarted,
+          hasUser: !!currentUser.value
+        })
 
         // 🚨 [关键修复] 加载后重新触发导航计算
         // 解决刷新页面后导航丢失的问题
@@ -536,9 +584,16 @@ export const useGameStore = defineStore('game', () => {
             checkAndUnlockNextPOI()
           }, 500)
         }
+
+        // 返回加载成功
+        return true
       }
+
+      console.log('📝 未找到存档文件，返回false')
+      return false
     } catch (error) {
-      console.error('加载进度失败:', error)
+      console.error('❌ 加载进度失败:', error)
+      return false
     }
   }
 

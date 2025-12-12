@@ -1,11 +1,18 @@
 <template>
 	<view class="home-page">
-		<CustomNavbar ref="navbarRef" title="潮起东方" bgColor="#00897B" textColor="#FFFFFF" :showBack="false" />
+		<!-- 启动页 -->
+		<view v-if="showStartScreen" class="start-screen">
+			<image src="/static/background/background_start.jpg" class="start-bg" mode="aspectFill" />
+			<view class="start-btn-hotspot" @tap="handleStartJourney"></view>
+		</view>
+
+		<CustomNavbar v-if="!showStartScreen" ref="navbarRef" title="潮起东方" bgColor="#00897B" textColor="#FFFFFF" :showBack="false" />
 
 		<map id="gameMap" class="game-map" :latitude="mapCenter.latitude" :longitude="mapCenter.longitude"
 			:markers="mapMarkers" :polyline="mapPolylines" :scale="16" :enable-3D="false" :show-compass="false"
 			:enable-overlooking="false" :enable-zoom="true" :enable-scroll="true" @markertap="onMarkerTap"
-			@tap="onMapTap" />
+			@tap="onMapTap"
+			v-if="!showStartScreen && missionStatus.gameStarted" />
 
 		<view class="map-controls">
 			<view class="map-btn compass-btn" @tap="goToCompass">
@@ -46,7 +53,7 @@
 			</view>
 		</view>
 
-		<view v-if="!missionStatus.gameStarted" class="character-select-modal">
+		<view v-if="!showStartScreen && !missionStatus.gameStarted" class="character-select-modal">
 			<view class="character-carousel">
 				<swiper :indicator-dots="true" :autoplay="false" @change="onCharacterChange">
 					<swiper-item v-for="(character, index) in directCharacters" :key="character?.id || index">
@@ -105,10 +112,17 @@
 	import LocationController from '@/components/LocationController.vue'
 
 	const gameStore = useGameStore()
+	const showStartScreen = ref(true) // 启动页显示状态，默认为true
 	const showCityModal = ref(false)
 	const selectedCharacterIndex = ref(0)
 	const showInventoryModal = ref(false)
 	const navbarRef = ref(null)
+
+	// 页面加载时读取存档
+	onLoad(() => {
+		console.log('🏠 首页加载，尝试读取存档...')
+		gameStore.loadProgress()
+	})
 
 	const getSafeSelectedIndex = () => {
 		const characters = directCharacters.value || []
@@ -444,6 +458,38 @@
 		const newIndex = e.detail?.current
 		if (typeof newIndex === 'number') selectedCharacterIndex.value = newIndex
 	}
+	// 处理启动页点击
+	const handleStartJourney = () => {
+		// 🔥 核心修复：优先信任 missionStatus.gameStarted 状态
+		// 1. 尝试读档
+		const loadSuccess = gameStore.loadProgress()
+
+		console.log('🎮 启动游戏，存档状态:', {
+			loadSuccess,
+			gameStarted: gameStore.missionStatus.gameStarted,
+			storyStage: gameStore.storyStage,
+			hasUser: !!gameStore.currentUser,
+			currentUser: gameStore.currentUser?.name
+		})
+
+		// 2. 判断：读档成功 且 游戏确实已开始
+		if (loadSuccess && gameStore.missionStatus.gameStarted) {
+			// 老玩家归来，直接进入游戏界面
+			console.log('✅ 老玩家归来，直接进入地图')
+			showStartScreen.value = false      // 隐藏启动页
+			showCityModal.value = false        // 确保不弹窗
+			// missionStatus.gameStarted = true 会自动隐藏人物选择框
+		} else {
+			// 新游戏，前往选人
+			console.log('🎬 新游戏，前往选人')
+
+			// 不要在这里调用 initGame，等用户在模态框里选完人点击"开始"后再 init
+			showStartScreen.value = false      // 隐藏启动页
+			// 注意：这里不需要设置 showCityModal.value = true，因为我们用的是人物选择模态框
+			// missionStatus.gameStarted = false 会自动显示人物选择框
+		}
+	}
+
 	const startGame = () => {
 		const characters = directCharacters.value || []
 		if (!characters || characters.length === 0) return
@@ -451,14 +497,28 @@
 		const char = characters[getSafeSelectedIndex()]
 
 		if (char && char.name) {
-			// 1. 先关闭模态框，进入游戏状态
-			gameStore.initGame(char)
-			uni.showToast({ title: `进入: ${char.name}`, icon: 'none' })
+			// 🚨 重要：这里的逻辑已经简化，因为老玩家的判断已经在 handleStartJourney 中完成了
+			// 能执行到这里的，都是新玩家或者需要重新开始的玩家
 
-			// 2. 延迟启动剧情，让地图先露出来
+			console.log('🆕 开始新游戏，角色:', char.name)
+
+			// 初始化游戏 (会设置当前角色和 gameStarted = true)
+			gameStore.initGame(char)
+
+			// 显示新旅程提示
+			uni.showToast({
+				title: `开启新旅程: ${char.name}`,
+				icon: 'none',
+				duration: 1500
+			})
+
+			// 延迟显示开场剧情，确保UI已经渲染完成
 			setTimeout(() => {
-				gameStore.startStory(char.id)
-			}, 800)
+				// 再次检查，防止在异步过程中状态发生变化
+				if(gameStore.storyStage <= 1) {
+					gameStore.startStory(char.id)
+				}
+			}, 1500)
 		}
 	}
 
@@ -720,4 +780,39 @@
 			}
 		}
 	}
+
+/* 启动页样式 */
+.start-screen {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 9999;
+  background-color: #f4e4cc; /* 配合图片的复古底色 */
+}
+
+.start-bg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 点击热区：覆盖在图片原本的按钮位置上 */
+.start-btn-hotspot {
+  position: absolute;
+  /* 📉 下调至 4%：根据截图反馈，原位置太高，需大幅下移 */
+  bottom: 4%;
+  left: 50%;
+  transform: translateX(-50%);
+  /* 📐 增大至 340rpx：确保覆盖放大镜主体及手柄 */
+  width: 340rpx;
+  height: 340rpx;
+  border-radius: 50%;
+
+  /* 🔴 调试中：保留红色背景以便确认，对齐后改为 transparent */
+  background: rgba(255, 0, 0, 0.3);
+  z-index: 10000;
+
+  &:active {
+    background: rgba(255, 0, 0, 0.5);
+  }
+}
 </style>
