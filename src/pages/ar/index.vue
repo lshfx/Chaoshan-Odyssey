@@ -324,9 +324,17 @@
 		let startNode : ScriptNode | null = null
 
 		// 1. 获取存档
-		const savedNodeId = gameStore.getNPCProgress(currentNPC.value.id)
+		let savedNodeId = gameStore.getNPCProgress(currentNPC.value.id)
 
-		// 2. 优先尝试恢复存档 (Fix: 只要有存档且不是完结状态，优先继续剧情)
+		// 2. [FIX] 进度修正/跳过逻辑
+		// 如果存档停留在"解谜成功"节点，说明玩家已经看过了成功动画，
+		// 下次进来应该直接从"出示证物前"的对话开始，避免重复获得物品的错觉。
+		if (savedNodeId === 'act1_puzzle_success') {
+			console.log('🔄 检测到已完成解谜，自动跳过成功动画，跳转至: act1_pre_present')
+			savedNodeId = 'act1_pre_present'
+		}
+
+		// 3. 优先尝试恢复存档 (Fix: 只要有存档且不是完结状态，优先继续剧情)
 		if (savedNodeId && savedNodeId !== 'completed_ending') {
 			startNode = scriptNodes.find(node => node.id === savedNodeId) || null
 			if (startNode) console.log('📖 读取存档恢复剧情进度:', savedNodeId)
