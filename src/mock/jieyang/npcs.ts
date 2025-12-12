@@ -884,8 +884,8 @@ export const npcs: NPC[] = [
             // ✨ [新增] 通用跳转条件：如果已获得线索，则跳转到对质节点
             jumpCondition: {
               requiredClue: 'clue_fake_seal',
-              nextId: 'act3_confront'
-            }
+              nextId: 'act3_confront',
+            },
           },
 
           // ---------------------------------------------------------
@@ -1059,6 +1059,31 @@ export const npcs: NPC[] = [
             content:
               '【结局：雨夜孤影】\n线索断了。虽然蔡福生被抓，但他狂笑着看着火盆里的灰烬。你赢了局，却输了家。',
             endingId: 'ending_bad', // 🌧️ 悲剧结局
+          },
+          // ---------------------------------------------------------
+          // 7. 闲聊节点 (剧情结束后随机触发) - 幕后旁白版
+          // ---------------------------------------------------------
+          {
+            id: 'completed_cai_silence',
+            type: 'end',
+            speaker: '系统',
+            content:
+              '【后日谈】\n醉仙楼已被官府查封。往日里推杯换盏的喧嚣不再，只剩下门口那张褪色的封条在风中猎猎作响。',
+            // 注意：这里不需要 trigger，因为 index.vue 会自动随机读取 completed_ 开头的节点
+          },
+          {
+            id: 'completed_cai_reflection',
+            type: 'end',
+            speaker: '系统',
+            content:
+              '【后日谈】\n那个总是把“和气生财”挂在嘴边的老板，终究还是倒在了自己的贪婪之中。古城的正义或许会迟到，但从未缺席。',
+          },
+          {
+            id: 'completed_cai_hint',
+            type: 'end',
+            speaker: '系统',
+            content:
+              '【系统提示】\n蔡福生的阴谋已被粉碎。你抚摸着手中的信物，感觉离父母的真相又近了一步。也许该去码头看看了……',
           },
         ],
       },

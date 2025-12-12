@@ -70,6 +70,30 @@
 	// 当前NPC数据
 	const currentNPC = ref<NPC | null>(null)
 
+	// 🛠️ [新增] 辅助函数：解析POI ID用于任务完成
+	const resolvePoiIdForCompletion = (): string | null => {
+		console.log('🔍 [降级策略] 开始解析POI ID用于任务完成...')
+
+		// 1. 优先检查路由参数
+		if (routeParams.value.poiId) {
+			console.log(`✅ [降级策略] 通过路由参数获取到POI ID: ${routeParams.value.poiId}`)
+			return routeParams.value.poiId
+		}
+
+		// 2. 降级检查NPC location属性
+		if (currentNPC.value && 'location' in currentNPC.value) {
+			const npcLocation = (currentNPC.value as any).location
+			if (npcLocation) {
+				console.log(`✅ [降级策略] 通过NPC location获取到POI ID: ${npcLocation}`)
+				return npcLocation
+			}
+		}
+
+		// 3. 都为空的情况
+		console.warn('❌ [降级策略] 无法获取POI ID：路由参数和NPC location都为空')
+		return null
+	}
+
 	// StoryDialogue 组件引用
 	const dialogueComponent = ref<InstanceType<typeof StoryDialogue> | null>(null)
 
@@ -656,8 +680,10 @@
 	const handleLineChange = (line : any) => {
 		console.log('当前对话行变化:', line.id)
 
-		// ✅ 检查是否有 trigger 触发器
+		// 🛡️ [重构] 优先级 1：处理显式 Trigger (兼容 Act 1 等已有配置)
 		if (line.trigger) {
+			console.log(`🎯 [Trigger] 检测到显式触发器: ${line.trigger}`)
+
 			switch (line.trigger) {
 				case 'grant_seal_one':
 					// 林文渊 - 儒学文脉章
@@ -737,8 +763,12 @@
 				case 'chapter_complete_perfect':
 					// 完美结局达成
 					console.log('[Trigger] 完美结局达成')
-					if (currentNPC.value && routeParams.value.poiId) {
-						gameStore.completeMission(routeParams.value.poiId)
+
+					// 🛠️ [重构] 使用降级策略获取POI ID
+					const poiId = resolvePoiIdForCompletion()
+					if (poiId && currentNPC.value) {
+						console.log(`[Trigger] 执行任务完成逻辑，POI ID: ${poiId}`)
+						gameStore.completeMission(poiId)
 						gameStore.saveNPCProgress(currentNPC.value.id, 'completed_ending')
 						gameStore.clearTargetLocation()
 						uni.showToast({
@@ -746,14 +776,20 @@
 							icon: 'success',
 							duration: 2000
 						})
+					} else {
+						console.warn('[Trigger] 无法执行任务完成：POI ID 或 NPC 数据缺失')
 					}
 					break
 
 				case 'chapter_complete_normal':
 					// 普通结局达成
 					console.log('[Trigger] 普通结局达成')
-					if (currentNPC.value && routeParams.value.poiId) {
-						gameStore.completeMission(routeParams.value.poiId)
+
+					// 🛠️ [重构] 使用降级策略获取POI ID
+					const poiIdNormal = resolvePoiIdForCompletion()
+					if (poiIdNormal && currentNPC.value) {
+						console.log(`[Trigger] 执行任务完成逻辑，POI ID: ${poiIdNormal}`)
+						gameStore.completeMission(poiIdNormal)
 						gameStore.saveNPCProgress(currentNPC.value.id, 'completed_ending')
 						gameStore.clearTargetLocation()
 						uni.showToast({
@@ -761,11 +797,86 @@
 							icon: 'none',
 							duration: 2000
 						})
+					} else {
+						console.warn('[Trigger] 无法执行任务完成：POI ID 或 NPC 数据缺失')
+					}
+					break
+
+				// 🛠️ [新增] 通用结尾处理：捕获所有以 _ending 结尾的触发器
+				case 'completed_ending':
+				case 'ending_bad':
+				case 'ending_perfect':
+				case 'ending_normal':
+					console.log(`[Trigger] 检测到通用结局触发器: ${line.trigger}`)
+
+					// 🛠️ [重构] 使用降级策略获取POI ID
+					const poiIdEnding = resolvePoiIdForCompletion()
+					if (poiIdEnding && currentNPC.value) {
+						console.log(`[Trigger] 执行通用任务完成逻辑，POI ID: ${poiIdEnding}`)
+						gameStore.completeMission(poiIdEnding)
+						gameStore.saveNPCProgress(currentNPC.value.id, line.trigger)
+						gameStore.clearTargetLocation()
+
+						// 根据触发器类型显示不同的提示
+						let toastTitle = '任务完成'
+						let toastIcon: 'success' | 'none' = 'none'
+
+						if (line.trigger === 'ending_perfect') {
+							toastTitle = '完美结局达成'
+							toastIcon = 'success'
+						} else if (line.trigger === 'ending_bad') {
+							toastTitle = '剧情结局'
+							toastIcon = 'none'
+						}
+
+						uni.showToast({
+							title: toastTitle,
+							icon: toastIcon,
+							duration: 2000
+						})
+					} else {
+						console.warn(`[Trigger] 无法执行${line.trigger}任务完成：POI ID 或 NPC 数据缺失`)
 					}
 					break
 
 				default:
 					console.log(`[Trigger] 未处理的触发器: ${line.trigger}`)
+			}
+
+			// 🚨 [关键] 处理完 trigger 后直接返回，避免与 ending 逻辑冲突
+			return
+		}
+
+		// 🛡️ [新增] 优先级 2：降级处理 - 如果没有 Trigger 但有 Ending 数据 (修复 Act 3)
+		if (line.ending) {
+			console.log('[Auto-Trigger] 节点无显式 Trigger，但检测到 Ending 对象，执行自动完成逻辑')
+
+			// 🛠️ [重构] 使用降级策略获取POI ID
+			const poiIdFromEnding = resolvePoiIdForCompletion()
+			if (poiIdFromEnding && currentNPC.value) {
+				console.log(`[Auto-Trigger] 执行自动任务完成逻辑，POI ID: ${poiIdFromEnding}`)
+				gameStore.completeMission(poiIdFromEnding)
+				gameStore.saveNPCProgress(currentNPC.value.id, 'completed_ending')
+				gameStore.clearTargetLocation()
+
+				// 根据 ending 类型显示不同的提示
+				let toastTitle = '任务完成'
+				let toastIcon: 'success' | 'none' = 'success'
+
+				if (line.ending.type === 'perfect') {
+					toastTitle = '完美结局达成'
+				} else if (line.ending.type === 'bad') {
+					toastTitle = '剧情结局'
+					toastIcon = 'none'
+				}
+
+				uni.showToast({
+					title: toastTitle,
+					icon: toastIcon,
+					duration: 2000
+				})
+			} else {
+				console.warn('[Auto-Trigger] 无法执行自动任务完成：POI ID 或 NPC 数据缺失')
 			}
 		}
 

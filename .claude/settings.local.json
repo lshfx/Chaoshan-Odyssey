@@ -8,7 +8,8 @@
       "Bash(npx tsc --noEmit --skipLibCheck)",
       "Bash(npm run dev:h5:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run build:h5:*)"
+      "Bash(npm run build:h5:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
