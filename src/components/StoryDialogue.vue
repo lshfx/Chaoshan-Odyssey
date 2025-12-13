@@ -1,6 +1,6 @@
 <template>
 	<view v-if="visible" class="dialogue-overlay" @tap="onOverlayTap">
-		<image v-if="bgImage" :src="bgImage" class="dialogue-background" mode="aspectFill" />
+		<image v-if="processedBgImage" :src="processedBgImage" class="dialogue-background" mode="aspectFill" />
 
 		<view v-if="currentLine?.speakerType === 'narrator'" class="dialogue-overlay narrator-overlay" />
 
@@ -22,7 +22,7 @@
 					:key="currentLine!.id"
 					:content="currentLine?.content || ''"
 					:name="currentLine?.name || ''"
-					:avatar="currentLine?.avatar"
+					:avatar="processedAvatar"
 					:speaker-type="getSpeakerType()"
 					:has-options="false"
 					@next="() => {}"
@@ -36,7 +36,7 @@
 					:key="currentLine!.id"
 					:content="currentLine?.content || ''"
 					:name="currentLine?.name || ''"
-					:avatar="currentLine?.avatar"
+					:avatar="processedAvatar"
 					:speaker-type="getSpeakerType()"
 					:has-options="false"
 					@next="() => {}"
@@ -50,7 +50,7 @@
 				:key="currentLine!.id"
 				:content="currentLine?.content || ''"
 				:name="currentLine?.name || ''"
-				:avatar="currentLine?.avatar"
+				:avatar="processedAvatar"
 				:speaker-type="getSpeakerType()"
 				@next="handleDialogueTap"
 			/>
@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-	import { ref, computed, watch, nextTick } from 'vue'
+	import { ref, computed, watch, nextTick, getCurrentInstance } from 'vue'
 	import DialogueBox from './story/DialogueBox.vue'
 	import ChoicePanel from './story/ChoicePanel.vue'
 	import TaskPanel from './story/TaskPanel.vue'
@@ -123,6 +123,9 @@
 		bgImage: ''
 	})
 
+	// 获取当前实例以访问全局属性
+	const { proxy } = getCurrentInstance()!
+
 	// Emits 定义
 	const emit = defineEmits<{
 		'update:visible' : [value: boolean]
@@ -156,6 +159,31 @@
 
 	const hasOptions = computed(() => {
 		return !!(currentLine.value?.options && currentLine.value.options.length > 0)
+	})
+
+	// 处理图片路径，添加 $imgHost 前缀
+	const processedBgImage = computed(() => {
+		if (!props.bgImage) return ''
+		// 如果路径已经是完整的URL，直接返回
+		if (props.bgImage.startsWith('http')) return props.bgImage
+		// 如果路径已经包含 /static/，替换为相对路径
+		if (props.bgImage.startsWith('/static/')) {
+			return props.bgImage.replace('/static/', '')
+		}
+		// 返回带主机前缀的路径
+		return proxy.$imgHost + props.bgImage
+	})
+
+	const processedAvatar = computed(() => {
+		if (!currentLine.value?.avatar) return ''
+		// 如果路径已经是完整的URL，直接返回
+		if (currentLine.value.avatar.startsWith('http')) return currentLine.value.avatar
+		// 如果路径已经包含 /static/，替换为相对路径
+		if (currentLine.value.avatar.startsWith('/static/')) {
+			return currentLine.value.avatar.replace('/static/', '')
+		}
+		// 返回带主机前缀的路径
+		return proxy.$imgHost + currentLine.value.avatar
 	})
 
 	// 方法

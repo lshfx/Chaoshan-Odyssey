@@ -13,7 +13,7 @@
       <view class="avatar-section">
         <image
           class="user-avatar"
-          :src="currentUser?.avatar || '/static/avatar-placeholder.png'"
+          :src="currentUser?.avatar || $imgHost + 'avatar-placeholder.webp'"
           mode="aspectFill"
         />
         <view class="avatar-border"></view>
@@ -27,7 +27,10 @@
         </view>
         <view class="level-section">
           <view class="level-bar">
-            <view class="level-progress" :style="{ width: levelProgress + '%' }"></view>
+            <view
+              class="level-progress"
+              :style="{ width: levelProgress + '%' }"
+            ></view>
           </view>
           <text class="level-text">Lv.{{ currentUser?.level || 1 }}</text>
         </view>
@@ -46,7 +49,7 @@
         <view class="seal-item" v-for="seal in mainSeals" :key="seal.id">
           <view
             class="seal-slot"
-            :class="{ 'collected': isSealCollected(seal.id) }"
+            :class="{ collected: isSealCollected(seal.id) }"
             @tap="showSealDetail(seal)"
           >
             <image
@@ -67,7 +70,7 @@
         <view class="center-seal">
           <view
             class="master-seal-slot"
-            :class="{ 'collected': isSealCollected('laoye_baohao_seal') }"
+            :class="{ collected: isSealCollected('laoye_baohao_seal') }"
             @tap="showSealDetail(getMasterSeal())"
           >
             <image
@@ -89,7 +92,10 @@
       <view class="progress-info">
         <text class="progress-text">收集进度：{{ collectedCount }} / 5</text>
         <view class="progress-bar">
-          <view class="progress-fill" :style="{ width: (collectedCount / 5) * 100 + '%' }"></view>
+          <view
+            class="progress-fill"
+            :style="{ width: (collectedCount / 5) * 100 + '%' }"
+          ></view>
         </view>
       </view>
     </view>
@@ -136,7 +142,9 @@
               mode="aspectFit"
             />
             <view class="seal-text-col">
-              <text class="modal-description">{{ selectedSeal?.description }}</text>
+              <text class="modal-description">{{
+                selectedSeal?.description
+              }}</text>
             </view>
           </view>
 
@@ -172,23 +180,25 @@ const showInventoryModal = ref(false)
 // 计算属性
 const currentUser = computed(() => gameStore.currentUser)
 const currentCityData = computed(() => gameStore.currentCityData)
-const mainSeals = computed(() => currentCityData.value?.seals?.filter(seal => !seal.isFinalSeal) || [])
+const mainSeals = computed(
+  () => currentCityData.value?.seals?.filter((seal) => !seal.isFinalSeal) || []
+)
 const collectedSeals = computed(() => gameStore.collectedSeals)
 const collectedCount = computed(() => collectedSeals.value.length)
 
 // 等级进度 (简单模拟)
 const levelProgress = computed(() => {
   const level = currentUser.value?.level || 1
-  return Math.min((level * 20), 100)
+  return Math.min(level * 20, 100)
 })
 
 // 方法
 const isSealCollected = (sealId: string) => {
-  return collectedSeals.value.some(seal => seal?.id === sealId)
+  return collectedSeals.value.some((seal) => seal?.id === sealId)
 }
 
 const getMasterSeal = () => {
-  return currentCityData.value?.seals?.find(seal => seal.isFinalSeal)
+  return currentCityData.value?.seals?.find((seal) => seal.isFinalSeal)
 }
 
 const showSealDetail = (seal: any) => {
@@ -198,7 +208,7 @@ const showSealDetail = (seal: any) => {
   } else {
     uni.showToast({
       title: '尚未收集此印章',
-      icon: 'none'
+      icon: 'none',
     })
   }
 }
@@ -215,14 +225,14 @@ const openInventory = () => {
 const openStoryLog = () => {
   uni.showToast({
     title: '剧情回顾功能开发中...',
-    icon: 'none'
+    icon: 'none',
   })
 }
 
 const openSettings = () => {
   uni.showToast({
     title: '系统设置功能开发中...',
-    icon: 'none'
+    icon: 'none',
   })
 }
 
@@ -248,16 +258,23 @@ onMounted(() => {
     left: 0;
     right: 0;
     bottom: 0;
-    background-image:
-      radial-gradient(circle at 20% 30%, rgba(0, 137, 123, 0.05) 0%, transparent 50%),
-      radial-gradient(circle at 80% 70%, rgba(244, 67, 54, 0.05) 0%, transparent 50%);
+    background-image: radial-gradient(
+        circle at 20% 30%,
+        rgba(0, 137, 123, 0.05) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 80% 70%,
+        rgba(244, 67, 54, 0.05) 0%,
+        transparent 50%
+      );
     z-index: 0;
   }
 }
 
 // 头部卡片 - 深青色渐变，与导航栏无缝融合
 .header-card {
-  background: linear-gradient(135deg, #00897B 0%, #00695C 50%, #004D40 100%);
+  background: linear-gradient(135deg, #00897b 0%, #00695c 50%, #004d40 100%);
   border-radius: 0 0 24rpx 24rpx; // 只有底部圆角，与导航栏融合
   padding: 40rpx;
   margin-bottom: 40rpx;
@@ -302,7 +319,7 @@ onMounted(() => {
     left: -8rpx;
     right: -8rpx;
     bottom: -8rpx;
-    border: 2rpx solid #BFA46F;
+    border: 2rpx solid #bfa46f;
     border-radius: 50%;
     z-index: 1;
   }
@@ -327,11 +344,11 @@ onMounted(() => {
 
   .title-tag {
     background: rgba(191, 164, 111, 0.3);
-    color: #FFC107;
+    color: #ffc107;
     padding: 6rpx 12rpx;
     border-radius: 12rpx;
     font-size: 20rpx;
-    border: 1rpx solid #BFA46F;
+    border: 1rpx solid #bfa46f;
   }
 }
 
@@ -349,7 +366,7 @@ onMounted(() => {
 
     .level-progress {
       height: 100%;
-      background: linear-gradient(90deg, #FFC107, #FF9800);
+      background: linear-gradient(90deg, #ffc107, #ff9800);
       border-radius: 4rpx;
       transition: width 0.3s ease;
     }
@@ -433,7 +450,7 @@ onMounted(() => {
 
   &.collected {
     background: rgba(0, 137, 123, 0.1);
-    border: 2rpx solid #00897B;
+    border: 2rpx solid #00897b;
     box-shadow: 0 4rpx 15rpx rgba(0, 137, 123, 0.2);
 
     &:active {
@@ -480,11 +497,11 @@ onMounted(() => {
 
   // 未收集状态
   background: linear-gradient(135deg, #fef8e7 0%, #f9f1dc 100%);
-  border: 3rpx dashed #BFA46F;
+  border: 3rpx dashed #bfa46f;
 
   &.collected {
     background: rgba(191, 164, 111, 0.1);
-    border: 3rpx solid #BFA46F;
+    border: 3rpx solid #bfa46f;
     box-shadow: 0 6rpx 20rpx rgba(191, 164, 111, 0.3);
 
     &:active {
@@ -509,7 +526,7 @@ onMounted(() => {
 
     .seal-name {
       font-size: 20rpx;
-      color: #BFA46F;
+      color: #bfa46f;
       font-weight: bold;
     }
   }
@@ -522,7 +539,7 @@ onMounted(() => {
   text-align: center;
 
   &.master-label {
-    color: #BFA46F;
+    color: #bfa46f;
     font-weight: bold;
   }
 }
@@ -546,7 +563,7 @@ onMounted(() => {
 
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, #00897B, #4CAF50);
+      background: linear-gradient(90deg, #00897b, #4caf50);
       border-radius: 4rpx;
       transition: width 0.5s ease;
     }
@@ -667,7 +684,7 @@ onMounted(() => {
     justify-content: flex-start;
     margin-bottom: 30rpx;
     padding: 0 20rpx; /* 增加一点内边距 */
-    gap: 30rpx;       /* 图文间距 */
+    gap: 30rpx; /* 图文间距 */
   }
 
   .modal-seal-image {
@@ -675,8 +692,8 @@ onMounted(() => {
     height: 140rpx;
     flex-shrink: 0; /* 防止图片被压缩 */
     border-radius: 12rpx;
-    background: rgba(0,0,0,0.03);
-    border: 1rpx solid rgba(0,0,0,0.05);
+    background: rgba(0, 0, 0, 0.03);
+    border: 1rpx solid rgba(0, 0, 0, 0.05);
   }
 
   .seal-text-col {
@@ -708,14 +725,14 @@ onMounted(() => {
 
     .theme-label {
       font-size: 24rpx;
-      color: #00897B;
+      color: #00897b;
       font-weight: bold;
       margin-right: 10rpx;
     }
 
     .theme-text {
       font-size: 24rpx;
-      color: #00695C;
+      color: #00695c;
     }
   }
 }

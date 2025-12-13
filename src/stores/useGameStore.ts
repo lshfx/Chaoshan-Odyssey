@@ -1,6 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { gameData, type Character, type POI, type Seal, type Clue, type Item } from '../mock/gameData'
+import {
+  gameData,
+  type Character,
+  type POI,
+  type Seal,
+  type Clue,
+  type Item,
+} from '../mock/gameData'
+import { IMG_HOST } from '@/config/constants'
 
 // NPC进度管理
 interface NPCProgress {
@@ -19,13 +27,13 @@ export const useGameStore = defineStore('game', () => {
   const npcProgress = ref<NPCProgress>({})
 
   const inventory = ref<{
-    seals: string[]  // 印章ID列表
-    clues: string[]  // 线索ID列表
-    items: string[]  // 其他物品ID列表
+    seals: string[] // 印章ID列表
+    clues: string[] // 线索ID列表
+    items: string[] // 其他物品ID列表
   }>({
     seals: [],
     clues: [],
-    items: []
+    items: [],
   })
 
   const missionStatus = ref<{
@@ -41,7 +49,7 @@ export const useGameStore = defineStore('game', () => {
     unlockedPOIs: [],
     currentObjective: '选择角色，开始游戏',
     gameStarted: false,
-    gameCompleted: false
+    gameCompleted: false,
   })
 
   // 位置状态
@@ -49,8 +57,8 @@ export const useGameStore = defineStore('game', () => {
     latitude: number
     longitude: number
   }>({
-    latitude: 23.5360,  // 揭阳古城中心
-    longitude: 116.3560
+    latitude: 23.536, // 揭阳古城中心
+    longitude: 116.356,
   })
 
   const targetLocation = ref<{
@@ -70,9 +78,9 @@ export const useGameStore = defineStore('game', () => {
 
   // 1. Player Hidden Stats
   const playerStats = ref({
-    courage: 0,  // 果敢度
-    clue: 0,     // 线索值
-    intimacy: 0  // 亲密度
+    courage: 0, // 果敢度
+    clue: 0, // 线索值
+    intimacy: 0, // 亲密度
   })
 
   // 2. Story History (Choice IDs)
@@ -82,7 +90,9 @@ export const useGameStore = defineStore('game', () => {
 
   // 获取当前城市数据
   const currentCityData = computed(() => {
-    return gameData[currentCity.value as keyof typeof gameData] || gameData.jieyang
+    return (
+      gameData[currentCity.value as keyof typeof gameData] || gameData.jieyang
+    )
   })
 
   // 获取当前城市的POI列表
@@ -91,73 +101,74 @@ export const useGameStore = defineStore('game', () => {
   })
 
   // 获取可见的地图标记（基于剧情解锁的POI）
-    const visibleMarkers = computed(() => {
-      const allPois = currentCityData.value?.pois || []
+  const visibleMarkers = computed(() => {
+    const allPois = currentCityData.value?.pois || []
 
-      // ✅ 核心修复：这里必须从 missionStatus.value.unlockedPOIs 读取！
-      // 之前的 unlockedPoiIds.value 是旧逻辑遗留的变量，导致新解锁的地点不显示
-      const unlockedList = missionStatus.value.unlockedPOIs
-      const completedList = completedPoiIds.value  // 🎨 新增：获取已完成列表
+    // ✅ 核心修复：这里必须从 missionStatus.value.unlockedPOIs 读取！
+    // 之前的 unlockedPoiIds.value 是旧逻辑遗留的变量，导致新解锁的地点不显示
+    const unlockedList = missionStatus.value.unlockedPOIs
+    const completedList = completedPoiIds.value // 🎨 新增：获取已完成列表
 
-      // 过滤出已解锁的POI
-      const markers = allPois
-        .filter(poi => unlockedList.includes(poi.id))
-        .map((poi, index) => {
-          // 判断是否是当前导航目标
-          const isTarget = targetLocation.value && poi.name === targetLocation.value.name
-          const isCompleted = completedList.includes(poi.id)  // 🎨 新增：判断是否已完成
+    // 过滤出已解锁的POI
+    const markers = allPois
+      .filter((poi) => unlockedList.includes(poi.id))
+      .map((poi, index) => {
+        // 判断是否是当前导航目标
+        const isTarget =
+          targetLocation.value && poi.name === targetLocation.value.name
+        const isCompleted = completedList.includes(poi.id) // 🎨 新增：判断是否已完成
 
-          // 🎨 图标与尺寸逻辑
-          let iconPath = '/static/markers/mission-marker.png'  // 默认为任务图标(红)
-          let width = 40
-          let height = 40
-          let zIndex = 5
+        // 🎨 图标与尺寸逻辑
+        let iconPath = '/static/markers/mission-marker.png' // 默认为任务图标(红)
+        let width = 40
+        let height = 40
+        let zIndex = 5
 
-          if (isCompleted) {
-            // ✅ 已完成：变蓝，变小
-            iconPath = '/static/my-location.png'
-            width = 24
-            height = 24
-            zIndex = 1  // 沉底
-          } else {
-            // 🚧 未完成：保持任务图标
-            iconPath = '/static/markers/mission-marker.png'
-            // 如果是当前追踪目标，可以稍微放大
-            if (isTarget) {
-              width = 48
-              height = 48
-              zIndex = 10
-            }
+        if (isCompleted) {
+          // ✅ 已完成：变蓝，变小
+          iconPath = '/static/markers/my-location.png'
+          width = 24
+          height = 24
+          zIndex = 1 // 沉底
+        } else {
+          // 🚧 未完成：保持任务图标
+          iconPath = '/static/markers/mission-marker.png'
+          // 如果是当前追踪目标，可以稍微放大
+          if (isTarget) {
+            width = 48
+            height = 48
+            zIndex = 10
           }
+        }
 
-          return {
-            id: 900000000 + index, // 唯一的数字 ID
-            poiId: String(poi.id), // 原始字符串 ID
-            latitude: poi.latitude,
-            longitude: poi.longitude,
-            iconPath,
-            width,
-            height,
-            anchor: { x: 0.5, y: 1 },
-            zIndex,
-            // 气泡逻辑
-            callout: {
-              content: poi.name,
-              color: '#FFFFFF',
-              fontSize: 12,
-              borderRadius: 6,
-              // 🎨 已完成蓝底，进行中红底
-              bgColor: isCompleted ? '#2196F3' : '#FF4444',
-              padding: 8,
-              // 目标点强制显示
-              display: 'ALWAYS',
-              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)'
-            }
-          }
-        })
+        return {
+          id: 900000000 + index, // 唯一的数字 ID
+          poiId: String(poi.id), // 原始字符串 ID
+          latitude: poi.latitude,
+          longitude: poi.longitude,
+          iconPath,
+          width,
+          height,
+          anchor: { x: 0.5, y: 1 },
+          zIndex,
+          // 气泡逻辑
+          callout: {
+            content: poi.name,
+            color: '#FFFFFF',
+            fontSize: 12,
+            borderRadius: 6,
+            // 🎨 已完成蓝底，进行中红底
+            bgColor: isCompleted ? '#2196F3' : '#FF4444',
+            padding: 8,
+            // 目标点强制显示
+            display: 'ALWAYS',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+          },
+        }
+      })
 
-      return markers
-    })
+    return markers
+  })
 
   // 获取当前城市的角色列表
   const currentCityCharacters = computed(() => {
@@ -166,7 +177,7 @@ export const useGameStore = defineStore('game', () => {
 
   // 获取已解锁的POI
   const unlockedPOIs = computed(() => {
-    return currentCityPOIs.value.filter(poi =>
+    return currentCityPOIs.value.filter((poi) =>
       missionStatus.value.unlockedPOIs.includes(poi.id)
     )
   })
@@ -175,9 +186,11 @@ export const useGameStore = defineStore('game', () => {
   const collectedSeals = computed(() => {
     const seals = inventory.value.seals || []
     const allSeals = [...(currentCityData.value?.seals || [])]
-    return seals.map(sealId => {
-      return allSeals.find(seal => seal.id === sealId)
-    }).filter(Boolean)
+    return seals
+      .map((sealId) => {
+        return allSeals.find((seal) => seal.id === sealId)
+      })
+      .filter(Boolean)
   })
 
   // 获取印章收集进度
@@ -187,24 +200,22 @@ export const useGameStore = defineStore('game', () => {
     return {
       current: collected,
       total: totalSeals,
-      percentage: totalSeals > 0 ? Math.round((collected / totalSeals) * 100) : 0
+      percentage:
+        totalSeals > 0 ? Math.round((collected / totalSeals) * 100) : 0,
     }
   })
 
   // 检查是否可以拼合四章图案
   const canCombineFourSeals = computed(() => {
     const seals = inventory.value.seals || []
-    const mainSeals = seals.filter(sealId =>
-      !sealId.includes('laoye_baohao')
-    )
+    const mainSeals = seals.filter((sealId) => !sealId.includes('laoye_baohao'))
     return mainSeals.length >= 4
   })
 
   // 检查是否可以获得老爷保号章
   const canGetFinalSeal = computed(() => {
     const seals = inventory.value.seals || []
-    return canCombineFourSeals.value &&
-           !seals.includes('laoye_baohao_seal')
+    return canCombineFourSeals.value && !seals.includes('laoye_baohao_seal')
   })
 
   // ============ Actions ============
@@ -226,7 +237,7 @@ export const useGameStore = defineStore('game', () => {
     console.log('游戏初始化完成:', {
       character: selectedCharacter.name,
       city: currentCity.value,
-      initialItems: inventory.value.items
+      initialItems: inventory.value.items,
     })
   }
 
@@ -261,12 +272,14 @@ export const useGameStore = defineStore('game', () => {
     // 重置该城市的进度
     missionStatus.value.unlockedPOIs = []
     missionStatus.value.completedTasks = []
-    missionStatus.value.currentObjective = `选择角色，开始${cityData?.cityName || '未知城市'}的旅程`
+    missionStatus.value.currentObjective = `选择角色，开始${
+      cityData?.cityName || '未知城市'
+    }的旅程`
 
     console.log('切换城市成功:', {
       from: currentCity.value,
       to: cityId,
-      cityName: cityData.cityName
+      cityName: cityData.cityName,
     })
 
     return true
@@ -279,7 +292,7 @@ export const useGameStore = defineStore('game', () => {
       console.log('解锁POI:', poiId)
 
       // 更新当前目标
-      const poi = currentCityPOIs.value.find(p => p.id === poiId)
+      const poi = currentCityPOIs.value.find((p) => p.id === poiId)
       if (poi) {
         missionStatus.value.currentObjective = `前往${poi.name}完成任务`
 
@@ -312,13 +325,16 @@ export const useGameStore = defineStore('game', () => {
     addSeal(sealId)
     uni.showToast({
       title: '获得新印章！',
-      icon: 'success'
+      icon: 'success',
     })
   }
 
   // 检查是否可以获得最终印章
   const checkFinalSealAvailability = () => {
-    if (canGetFinalSeal.value && !inventory.value.seals.includes('laoye_baohao_seal')) {
+    if (
+      canGetFinalSeal.value &&
+      !inventory.value.seals.includes('laoye_baohao_seal')
+    ) {
       // 可以获得老爷保号章
       setTimeout(() => {
         uni.showModal({
@@ -328,7 +344,7 @@ export const useGameStore = defineStore('game', () => {
           confirmText: '获得老爷保号章',
           success: () => {
             unlockSeal('laoye_baohao_seal')
-          }
+          },
         })
       }, 1000)
     }
@@ -371,7 +387,12 @@ export const useGameStore = defineStore('game', () => {
     // 1. 将POI加入已完成列表
     if (!completedPoiIds.value.includes(poiId)) {
       completedPoiIds.value.push(poiId)
-      console.log('POI已完成:', poiId, '已完成总数:', completedPoiIds.value.length)
+      console.log(
+        'POI已完成:',
+        poiId,
+        '已完成总数:',
+        completedPoiIds.value.length
+      )
     }
 
     // 2. 解锁下一个剧情阶段
@@ -395,7 +416,7 @@ export const useGameStore = defineStore('game', () => {
   // 解锁下一个POI
   const unlockNextPOI = (currentPoiId: string) => {
     const allPOIs = currentCityPOIs.value
-    const currentIndex = allPOIs.findIndex(poi => poi.id === currentPoiId)
+    const currentIndex = allPOIs.findIndex((poi) => poi.id === currentPoiId)
 
     if (currentIndex !== -1 && currentIndex < allPOIs.length - 1) {
       const nextPOI = allPOIs[currentIndex + 1]
@@ -447,15 +468,15 @@ export const useGameStore = defineStore('game', () => {
           saveProgress() // 🚨 必须立即保存！
 
           setTimeout(() => {
-             uni.showToast({ title: `解锁新地点：${poi.name}`, icon: 'none' })
+            uni.showToast({ title: `解锁新地点：${poi.name}`, icon: 'none' })
           }, 500)
         }
 
         // B. 导航逻辑 (🚨 核心修复：独立于解锁逻辑之外)
         // 只要是下一站，且还没完成，就强制刷新导航！
         if (!completedPoiIds.value.includes(nextPOIId)) {
-           // 强制刷新 targetLocation，确保地图组件能画线
-           setTargetLocation(poi.latitude, poi.longitude, poi.name)
+          // 强制刷新 targetLocation，确保地图组件能画线
+          setTargetLocation(poi.latitude, poi.longitude, poi.name)
         }
       }
     }
@@ -475,16 +496,23 @@ export const useGameStore = defineStore('game', () => {
           setTargetLocation(gatePOI.latitude, gatePOI.longitude, gatePOI.name)
 
           setTimeout(() => {
-            uni.showToast({ title: '最终地点解锁：进贤门', icon: 'none', duration: 4000 })
+            uni.showToast({
+              title: '最终地点解锁：进贤门',
+              icon: 'none',
+              duration: 4000,
+            })
           }, 500)
         }
         // B. 导航恢复 (防止丢失)
         else if (!completedPoiIds.value.includes(gateId)) {
-           // 如果当前没有导航，或者导航没指向进贤门，强制指过去
-           if (!targetLocation.value || targetLocation.value.name !== gatePOI.name) {
-               console.log('🔄 恢复进贤门导航')
-               setTargetLocation(gatePOI.latitude, gatePOI.longitude, gatePOI.name)
-           }
+          // 如果当前没有导航，或者导航没指向进贤门，强制指过去
+          if (
+            !targetLocation.value ||
+            targetLocation.value.name !== gatePOI.name
+          ) {
+            console.log('🔄 恢复进贤门导航')
+            setTargetLocation(gatePOI.latitude, gatePOI.longitude, gatePOI.name)
+          }
         }
       }
     }
@@ -504,12 +532,12 @@ export const useGameStore = defineStore('game', () => {
         completedPoiIds: completedPoiIds.value,
         playerStats: playerStats.value,
         storyHistory: storyHistory.value,
-        npcProgress: npcProgress.value
+        npcProgress: npcProgress.value,
       }
       uni.setStorageSync('chaoshan_odyssey_progress', gameData)
       console.log('✅ 游戏进度已保存', {
         storyStage: storyStage.value,
-        unlockedPoiCount: unlockedPoiIds.value.length
+        unlockedPoiCount: unlockedPoiIds.value.length,
       })
     } catch (error) {
       console.error('❌ 保存进度失败:', error)
@@ -527,23 +555,29 @@ export const useGameStore = defineStore('game', () => {
         inventory.value = savedData.inventory || {
           seals: [],
           clues: [],
-          items: []
+          items: [],
         }
         // 🔥 [关键修复] 必须正确恢复任务状态，确保每个字段都被正确赋值
         const savedMissionStatus = savedData.missionStatus
         if (savedMissionStatus) {
           // 逐字段恢复，确保 Vue 的响应性
-          missionStatus.value.currentPhase = savedMissionStatus.currentPhase || 'ice_breaking'
-          missionStatus.value.completedTasks = savedMissionStatus.completedTasks || []
-          missionStatus.value.unlockedPOIs = savedMissionStatus.unlockedPOIs || []
-          missionStatus.value.currentObjective = savedMissionStatus.currentObjective || '选择角色，开始游戏'
-          missionStatus.value.gameStarted = savedMissionStatus.gameStarted || false
-          missionStatus.value.gameCompleted = savedMissionStatus.gameCompleted || false
+          missionStatus.value.currentPhase =
+            savedMissionStatus.currentPhase || 'ice_breaking'
+          missionStatus.value.completedTasks =
+            savedMissionStatus.completedTasks || []
+          missionStatus.value.unlockedPOIs =
+            savedMissionStatus.unlockedPOIs || []
+          missionStatus.value.currentObjective =
+            savedMissionStatus.currentObjective || '选择角色，开始游戏'
+          missionStatus.value.gameStarted =
+            savedMissionStatus.gameStarted || false
+          missionStatus.value.gameCompleted =
+            savedMissionStatus.gameCompleted || false
 
           console.log('✅ 任务状态已恢复:', {
             gameStarted: missionStatus.value.gameStarted,
             currentPhase: missionStatus.value.currentPhase,
-            unlockedPOIs: missionStatus.value.unlockedPOIs.length
+            unlockedPOIs: missionStatus.value.unlockedPOIs.length,
           })
         } else {
           // 没有存档的任务状态，使用默认值
@@ -553,7 +587,7 @@ export const useGameStore = defineStore('game', () => {
             unlockedPOIs: [],
             currentObjective: '选择角色，开始游戏',
             gameStarted: false,
-            gameCompleted: false
+            gameCompleted: false,
           }
         }
 
@@ -565,7 +599,11 @@ export const useGameStore = defineStore('game', () => {
 
         // 恢复其他状态
         completedPoiIds.value = savedData.completedPoiIds || []
-        playerStats.value = savedData.playerStats || { courage: 0, clue: 0, intimacy: 0 }
+        playerStats.value = savedData.playerStats || {
+          courage: 0,
+          clue: 0,
+          intimacy: 0,
+        }
         storyHistory.value = savedData.storyHistory || []
         npcProgress.value = savedData.npcProgress || {}
 
@@ -573,7 +611,7 @@ export const useGameStore = defineStore('game', () => {
           storyStage: storyStage.value,
           unlockedPoiCount: unlockedPoiIds.value.length,
           gameStarted: missionStatus.value.gameStarted,
-          hasUser: !!currentUser.value
+          hasUser: !!currentUser.value,
         })
 
         // 🚨 [关键修复] 加载后重新触发导航计算
@@ -603,7 +641,7 @@ export const useGameStore = defineStore('game', () => {
     inventory.value = {
       seals: [],
       clues: [],
-      items: []
+      items: [],
     }
     missionStatus.value = {
       currentPhase: 'ice_breaking',
@@ -611,7 +649,7 @@ export const useGameStore = defineStore('game', () => {
       unlockedPOIs: [],
       currentObjective: '选择角色，开始游戏',
       gameStarted: false,
-      gameCompleted: false
+      gameCompleted: false,
     }
 
     // 清除本地存储
@@ -626,22 +664,24 @@ export const useGameStore = defineStore('game', () => {
 
   // 获取地图标记点
   const getMapMarkers = () => {
-    return currentCityPOIs.value.map(poi => {
+    return currentCityPOIs.value.map((poi) => {
       const isUnlocked = missionStatus.value.unlockedPOIs.includes(poi.id)
-      const isCompleted = completedPoiIds.value.includes(poi.id)  // ✅ 使用完成状态
-      const isCurrentObjective = missionStatus.value.currentObjective?.includes(poi.name)
+      const isCompleted = completedPoiIds.value.includes(poi.id) // ✅ 使用完成状态
+      const isCurrentObjective = missionStatus.value.currentObjective?.includes(
+        poi.name
+      )
 
       return {
         id: poi.id,
         latitude: poi.latitude,
         longitude: poi.longitude,
         iconPath: isCurrentObjective
-          ? '/static/markers/mission-marker.png'  // 红色高亮（当前目标）
+          ? '/static/markers/mission-marker.png' // 红色高亮（使用本地 PNG）
           : isCompleted
-            ? '/static/my-location.png'  // 使用现有蓝色图标表示已完成
+          ? '/static/markers/my-location.png' // 蓝色图标（使用本地 PNG）
           : isUnlocked
-            ? '/static/markers/mission-marker.png'  // 黄色已解锁但未完成（暂时复用）
-            : '/static/my-location.png',   // 灰色未解锁（暂时复用）
+          ? '/static/markers/mission-marker.png' // 黄色状态（使用本地 PNG）
+          : '/static/markers/my-location.png', // 灰色状态（使用本地 PNG） // 灰色未解锁（暂时复用）
         width: 30,
         height: 30,
         callout: {
@@ -650,38 +690,41 @@ export const useGameStore = defineStore('game', () => {
           textAlign: 'center',
           fontSize: 12,
           borderRadius: 4,
-          bgColor: isCurrentObjective ? '#ffebee' :
-                   isCompleted ? '#e3f2fd' :      // 蓝色背景（已完成）
-                   isUnlocked ? '#fff8e1' :       // 黄色背景（已解锁）
-                   '#f5f5f5',                    // 灰色背景（未解锁）
-          padding: 4
-        }
+          bgColor: isCurrentObjective
+            ? '#ffebee'
+            : isCompleted
+            ? '#e3f2fd' // 蓝色背景（已完成）
+            : isUnlocked
+            ? '#fff8e1' // 黄色背景（已解锁）
+            : '#f5f5f5', // 灰色背景（未解锁）
+          padding: 4,
+        },
       }
     })
   }
 
   // 获取POI详情
   const getPOIById = (poiId: string): POI | undefined => {
-    return currentCityPOIs.value.find(poi => poi.id === poiId)
+    return currentCityPOIs.value.find((poi) => poi.id === poiId)
   }
 
   // 获取印章详情
   const getSealById = (sealId: string): Seal | undefined => {
     const allSeals = [...currentCityData.value.seals]
-    return allSeals.find(seal => seal.id === sealId)
+    return allSeals.find((seal) => seal.id === sealId)
   }
 
   // 获取线索详情
   const getClueById = (clueId: string): Clue | undefined => {
     const allClues = [...currentCityData.value.clues]
-    return allClues.find(clue => clue.id === clueId)
+    return allClues.find((clue) => clue.id === clueId)
   }
 
   // 获取道具详情
   const getItemById = (itemId: string): Item | undefined => {
     // 这里可以根据实际需求扩展道具数据结构
     const allItems = [...(currentCityData.value.items || [])]
-    return allItems.find(item => item.id === itemId)
+    return allItems.find((item) => item.id === itemId)
   }
 
   // 更新用户位置
@@ -691,7 +734,11 @@ export const useGameStore = defineStore('game', () => {
   }
 
   // 设置目标位置
-  const setTargetLocation = (latitude: number | string, longitude: number | string, name: string) => {
+  const setTargetLocation = (
+    latitude: number | string,
+    longitude: number | string,
+    name: string
+  ) => {
     // 1. 强制类型转换
     const lat = Number(latitude)
     const lng = Number(longitude)
@@ -709,7 +756,7 @@ export const useGameStore = defineStore('game', () => {
       targetLocation.value = {
         latitude: lat,
         longitude: lng,
-        name: String(name)
+        name: String(name),
       }
       console.log('🧭 导航目标已重置并更新:', targetLocation.value)
     }, 100)
@@ -733,22 +780,22 @@ export const useGameStore = defineStore('game', () => {
           id: 'intro_1',
           speakerType: 'narrator',
           name: '旁白',
-          content: '百年前，揭阳侨商家族为守护文脉与资产，铸五枚印章为信物……'
+          content: '百年前，揭阳侨商家族为守护文脉与资产，铸五枚印章为信物……',
         },
         {
           id: 'intro_2',
           speakerType: 'player',
           name: '陈灵儿',
-          avatar: '/static/avatars/chen_linger.png',
-          content: '养母临终前告诉我，只要集齐印章，就能找到父母失踪的真相。'
+          avatar: IMG_HOST + 'avatars/chen_linger.webp',
+          content: '养母临终前告诉我，只要集齐印章，就能找到父母失踪的真相。',
         },
         {
           id: 'intro_3',
           speakerType: 'player',
           name: '陈灵儿',
-          avatar: '/static/avatars/chen_linger.png',
-          content: '也就是在这里……揭阳学宫。那是他们最后出现的地方。'
-        }
+          avatar: IMG_HOST + 'avatars/chen_linger.webp',
+          content: '也就是在这里……揭阳学宫。那是他们最后出现的地方。',
+        },
       ]
     } else {
       // 其他角色的默认剧情（后续扩展）
@@ -757,12 +804,17 @@ export const useGameStore = defineStore('game', () => {
           id: 'default_intro',
           speakerType: 'narrator',
           name: '旁白',
-          content: '你来到了揭阳古城，开启了寻找印章的旅程……'
-        }
+          content: '你来到了揭阳古城，开启了寻找印章的旅程……',
+        },
       ]
     }
 
-    console.log('剧情开始，角色:', characterId, '脚本长度:', currentScript.value.length)
+    console.log(
+      '剧情开始，角色:',
+      characterId,
+      '脚本长度:',
+      currentScript.value.length
+    )
   }
 
   // 解锁地点
@@ -779,7 +831,7 @@ export const useGameStore = defineStore('game', () => {
         // 显示提示
         uni.showToast({
           title: `已解锁：${poi.name}`,
-          icon: 'success'
+          icon: 'success',
         })
       }
     }
@@ -812,7 +864,11 @@ export const useGameStore = defineStore('game', () => {
       const newValue = playerStats.value[key]
 
       // 📊 [监控] 实时打印数值变化
-      console.log(`📊 [数值变更] ${type}: ${oldValue} ➡️ ${newValue} (变动: ${value > 0 ? '+' : ''}${value})`)
+      console.log(
+        `📊 [数值变更] ${type}: ${oldValue} ➡️ ${newValue} (变动: ${
+          value > 0 ? '+' : ''
+        }${value})`
+      )
     }
   }
 
@@ -826,7 +882,9 @@ export const useGameStore = defineStore('game', () => {
 
   // Check Conditions (e.g., { courage: 1 } -> true if courage >= 1)
   // 核心判定系统 (Smart Check)
-  const checkCondition = (conditions: Partial<typeof playerStats.value>): boolean => {
+  const checkCondition = (
+    conditions: Partial<typeof playerStats.value>
+  ): boolean => {
     for (const key in conditions) {
       // 🕵️‍♀️ [Hotfix] 线索判定特权：直接查背包！
       // 解决"明明有线索却判定失败"的 Bug
@@ -834,7 +892,9 @@ export const useGameStore = defineStore('game', () => {
         const requiredCount = conditions[key] || 0
         const actualCount = inventory.value.clues.length
 
-        console.log(`[判定] 检查线索: 背包拥有 ${actualCount} / 需要 ${requiredCount}`)
+        console.log(
+          `[判定] 检查线索: 背包拥有 ${actualCount} / 需要 ${requiredCount}`
+        )
 
         if (actualCount < requiredCount) {
           return false
@@ -847,7 +907,9 @@ export const useGameStore = defineStore('game', () => {
       const currentValue = playerStats.value[k]
       const requiredValue = conditions[k] || 0
 
-      console.log(`[判定] 检查属性 ${key}: 当前 ${currentValue} / 需要 ${requiredValue}`)
+      console.log(
+        `[判定] 检查属性 ${key}: 当前 ${currentValue} / 需要 ${requiredValue}`
+      )
 
       if (currentValue < requiredValue) {
         return false
@@ -948,10 +1010,12 @@ export const useGameStore = defineStore('game', () => {
   // --- AVG侦探解谜核心逻辑 ---
 
   // 调查物品动作
-  const inspectItem = (itemId: string): { success: boolean; inspectText?: string; clueId?: string } => {
+  const inspectItem = (
+    itemId: string
+  ): { success: boolean; inspectText?: string; clueId?: string } => {
     // 从当前城市数据中查找物品
     const allItems = [...(currentCityData.value.items || [])]
-    const item = allItems.find(item => item.id === itemId)
+    const item = allItems.find((item) => item.id === itemId)
 
     if (!item) {
       console.error(`[调查物品] 物品不存在: ${itemId}`)
@@ -973,14 +1037,19 @@ export const useGameStore = defineStore('game', () => {
     return {
       success: true,
       inspectText: item.inspectText,
-      clueId: item.relatedClueId
+      clueId: item.relatedClueId,
     }
   }
 
   // 验证举证动作
-  const validatePresentation = (presentedItemId: string, requiredItemId: string): boolean => {
+  const validatePresentation = (
+    presentedItemId: string,
+    requiredItemId: string
+  ): boolean => {
     const isValid = presentedItemId === requiredItemId
-    console.log(`[举证验证] ${presentedItemId} vs ${requiredItemId} = ${isValid}`)
+    console.log(
+      `[举证验证] ${presentedItemId} vs ${requiredItemId} = ${isValid}`
+    )
     return isValid
   }
 
@@ -989,14 +1058,23 @@ export const useGameStore = defineStore('game', () => {
     if (!targetLocation.value) return 0
 
     const R = 6371000 // 地球半径（米）
-    const lat1 = userLocation.value.latitude * Math.PI / 180
-    const lat2 = targetLocation.value.latitude * Math.PI / 180
-    const deltaLat = (targetLocation.value.latitude - userLocation.value.latitude) * Math.PI / 180
-    const deltaLon = (targetLocation.value.longitude - userLocation.value.longitude) * Math.PI / 180
+    const lat1 = (userLocation.value.latitude * Math.PI) / 180
+    const lat2 = (targetLocation.value.latitude * Math.PI) / 180
+    const deltaLat =
+      ((targetLocation.value.latitude - userLocation.value.latitude) *
+        Math.PI) /
+      180
+    const deltaLon =
+      ((targetLocation.value.longitude - userLocation.value.longitude) *
+        Math.PI) /
+      180
 
-    const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-              Math.cos(lat1) * Math.cos(lat2) *
-              Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2)
+    const a =
+      Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+      Math.cos(lat1) *
+        Math.cos(lat2) *
+        Math.sin(deltaLon / 2) *
+        Math.sin(deltaLon / 2)
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
     return Math.round(R * c) // 返回米数
@@ -1077,6 +1155,6 @@ export const useGameStore = defineStore('game', () => {
     validatePresentation,
 
     // 物品管理
-    addItem
+    addItem,
   }
 })

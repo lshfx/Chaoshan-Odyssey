@@ -6,7 +6,9 @@
       <button class="test-btn" @tap="startNarratorDialogue">旁白测试</button>
       <button class="test-btn" @tap="startMixedDialogue">混合剧情测试</button>
       <button class="test-btn" @tap="startTaskDialogue">任务功能测试</button>
-      <button class="test-btn" @tap="startInteractiveNarrative">Phase 6 交互叙事测试</button>
+      <button class="test-btn" @tap="startInteractiveNarrative">
+        Phase 6 交互叙事测试
+      </button>
       <button class="test-btn" @tap="startEndingTest">结局画面测试</button>
     </view>
 
@@ -37,21 +39,22 @@ const npcDialogueScript = [
     id: 'npc_1',
     speakerType: 'npc' as const,
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '年轻人，欢迎来到揭阳学宫。想要获得儒学文脉印章，必须展现出对传统文化的尊重。'
+    avatar: 'npcs/lin_wenyuan.webp',
+    content:
+      '年轻人，欢迎来到揭阳学宫。想要获得儒学文脉印章，必须展现出对传统文化的尊重。',
   },
   {
     id: 'npc_2',
     speakerType: 'npc' as const,
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
+    avatar: 'npcs/lin_wenyuan.webp',
     content: '请在大成殿向孔子像行揖礼，然后回答我的两个问题。你准备好了吗？',
     options: [
       { label: '我准备好了，请出题吧！', value: 'ready' },
       { label: '我需要先准备一下', value: 'prepare' },
-      { label: '可以先告诉我答案吗？', value: 'cheat' }
-    ]
-  }
+      { label: '可以先告诉我答案吗？', value: 'cheat' },
+    ],
+  },
 ]
 
 const playerDialogueScript = [
@@ -59,16 +62,17 @@ const playerDialogueScript = [
     id: 'player_1',
     speakerType: 'player' as const,
     name: '陈灵儿',
-    avatar: '/static/avatars/chen_linger.png',
-    content: '林先生，我是学宫的捕快陈灵儿。我正在寻找一枚特殊的印章，据说与儒学文脉有关。'
+    avatar: 'avatars/chen_linger.webp',
+    content:
+      '林先生，我是学宫的捕快陈灵儿。我正在寻找一枚特殊的印章，据说与儒学文脉有关。',
   },
   {
     id: 'player_2',
     speakerType: 'player' as const,
     name: '陈灵儿',
-    avatar: '/static/avatars/chen_linger.png',
-    content: '这枚印章对我非常重要，它关系到我父母失踪的真相。'
-  }
+    avatar: 'avatars/chen_linger.webp',
+    content: '这枚印章对我非常重要，它关系到我父母失踪的真相。',
+  },
 ]
 
 const narratorDialogueScript = [
@@ -76,14 +80,16 @@ const narratorDialogueScript = [
     id: 'narrator_1',
     speakerType: 'narrator' as const,
     name: '旁白',
-    content: '百年前的揭阳古城，侨商家族的印章守护者们在这片土地上上演着一场关乎信义与背叛的故事...'
+    content:
+      '百年前的揭阳古城，侨商家族的印章守护者们在这片土地上上演着一场关乎信义与背叛的故事...',
   },
   {
     id: 'narrator_2',
     speakerType: 'narrator' as const,
     name: '旁白',
-    content: '今天，年轻的继承者们即将踏上寻找印章的征程，他们的命运将如何展开？'
-  }
+    content:
+      '今天，年轻的继承者们即将踏上寻找印章的征程，他们的命运将如何展开？',
+  },
 ]
 
 const mixedDialogueScript = [
@@ -91,35 +97,35 @@ const mixedDialogueScript = [
     id: 'mixed_1',
     speakerType: 'narrator' as const,
     name: '旁白',
-    content: '揭阳学宫的大殿内，阳光透过雕花窗棂洒在青石板上...'
+    content: '揭阳学宫的大殿内，阳光透过雕花窗棂洒在青石板上...',
   },
   {
     id: 'mixed_2',
     speakerType: 'npc' as const,
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '年轻人，我看你气宇不凡，来此有何贵干？'
+    avatar: 'npcs/lin_wenyuan.webp',
+    content: '年轻人，我看你气宇不凡，来此有何贵干？',
   },
   {
     id: 'mixed_3',
     speakerType: 'player' as const,
     name: '陈灵儿',
-    avatar: '/static/avatars/chen_linger.png',
-    content: '林先生，我想了解儒学文脉印章的下落。'
+    avatar: 'avatars/chen_linger.webp',
+    content: '林先生，我想了解儒学文脉印章的下落。',
   },
   {
     id: 'mixed_4',
     speakerType: 'npc' as const,
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '印章就在我这里，但要得到它，你必须证明自己对传统文化的理解。'
+    avatar: 'npcs/lin_wenyuan.webp',
+    content: '印章就在我这里，但要得到它，你必须证明自己对传统文化的理解。',
   },
   {
     id: 'mixed_5',
     speakerType: 'narrator' as const,
     name: '旁白',
-    content: '一场考验即将开始，这不仅仅是对知识的测试，更是对内心的考验...'
-  }
+    content: '一场考验即将开始，这不仅仅是对知识的测试，更是对内心的考验...',
+  },
 ]
 
 const taskDialogueScript = [
@@ -127,14 +133,14 @@ const taskDialogueScript = [
     id: 'task_1',
     speakerType: 'narrator' as const,
     name: '旁白',
-    content: '在揭阳学宫的大成殿前，林文渊要考验你对传统文化的理解...'
+    content: '在揭阳学宫的大成殿前，林文渊要考验你对传统文化的理解...',
   },
   {
     id: 'task_2',
     speakerType: 'npc' as const,
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '年轻人，让我们先来一个简单的数学题热热身。'
+    avatar: 'npcs/lin_wenyuan.webp',
+    content: '年轻人，让我们先来一个简单的数学题热热身。',
   },
   {
     id: 'task_3',
@@ -144,15 +150,15 @@ const taskDialogueScript = [
       type: 'question',
       description: '请问：1 + 1 = ?',
       options: ['1', '2', '3', '4'],
-      correctOption: 1 // 索引1，即'2'
-    }
+      correctOption: 1, // 索引1，即'2'
+    },
   },
   {
     id: 'task_4',
     speakerType: 'npc' as const,
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '很好！现在让我们来一个更有文化内涵的问题。'
+    avatar: 'npcs/lin_wenyuan.webp',
+    content: '很好！现在让我们来一个更有文化内涵的问题。',
   },
   {
     id: 'task_5',
@@ -162,15 +168,15 @@ const taskDialogueScript = [
       type: 'question',
       description: '揭阳学宫始建于哪个朝代？',
       options: ['唐朝', '宋朝', '明朝', '清朝'],
-      correctOption: 2 // 索引2，即'明朝'
-    }
+      correctOption: 2, // 索引2，即'明朝'
+    },
   },
   {
     id: 'task_6',
     speakerType: 'npc' as const,
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '知识储备不错！现在请表现出你对传统文化的尊重。'
+    avatar: 'npcs/lin_wenyuan.webp',
+    content: '知识储备不错！现在请表现出你对传统文化的尊重。',
   },
   {
     id: 'task_7',
@@ -179,22 +185,24 @@ const taskDialogueScript = [
     task: {
       type: 'action',
       description: '请向孔子像行揖礼，表达对传统文化的敬意',
-      actionText: '行揖礼'
-    }
+      actionText: '行揖礼',
+    },
   },
   {
     id: 'task_8',
     speakerType: 'npc' as const,
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '很好！你已经证明了你对传统文化的理解和尊重。这枚儒学文脉印章，你当之无愧！'
+    avatar: 'npcs/lin_wenyuan.webp',
+    content:
+      '很好！你已经证明了你对传统文化的理解和尊重。这枚儒学文脉印章，你当之无愧！',
   },
   {
     id: 'task_9',
     speakerType: 'narrator' as const,
     name: '旁白',
-    content: '恭喜你成功完成了所有考验，获得了第一枚印章！接下来的旅程还充满挑战...'
-  }
+    content:
+      '恭喜你成功完成了所有考验，获得了第一枚印章！接下来的旅程还充满挑战...',
+  },
 ]
 
 // 结局测试剧本
@@ -203,7 +211,7 @@ const endingTestScript = [
     id: 'ending_narrator_1',
     speakerType: 'narrator' as const,
     name: '旁白',
-    content: '随着真相大白，你的旅途也迎来了终点...'
+    content: '随着真相大白，你的旅途也迎来了终点...',
   },
   {
     id: 'ending_node',
@@ -215,53 +223,55 @@ const endingTestScript = [
       type: 'perfect',
       title: '云开月明',
       achievement: '家族守护者',
-      description: '蔡福生被当场拿获，那一包还没来得及销毁的迷药和藏在暗格里的《护卫日志》完好无损。',
-      background: '你翻开日志，看到父亲的笔迹："吾儿，父母未死，隐于南洋。"三个月后，你辞去捕快之职，登上了去往南洋的红头船，与家人团聚。',
-      imageUrl: '/static/locations/confucian_temple_bg.jpg'
-    }
-  }
+      description:
+        '蔡福生被当场拿获，那一包还没来得及销毁的迷药和藏在暗格里的《护卫日志》完好无损。',
+      background:
+        '你翻开日志，看到父亲的笔迹："吾儿，父母未死，隐于南洋。"三个月后，你辞去捕快之职，登上了去往南洋的红头船，与家人团聚。',
+      imageUrl: 'locations/confucian_temple_bg.webp',
+    },
+  },
 ]
 
 // 测试方法
 const startNPCDialogue = () => {
   currentScript.value = npcDialogueScript
-  currentBgImage.value = '/static/locations/confucian_temple_bg.jpg'
+  currentBgImage.value = 'locations/confucian_temple_bg.webp'
   dialogueVisible.value = true
 }
 
 const startPlayerDialogue = () => {
   currentScript.value = playerDialogueScript
-  currentBgImage.value = '/static/locations/confucian_temple_bg.jpg'
+  currentBgImage.value = 'locations/confucian_temple_bg.webp'
   dialogueVisible.value = true
 }
 
 const startNarratorDialogue = () => {
   currentScript.value = narratorDialogueScript
-  currentBgImage.value = '/static/backgrounds/story_bg.jpg'
+  currentBgImage.value = 'backgrounds/story_bg.webp'
   dialogueVisible.value = true
 }
 
 const startMixedDialogue = () => {
   currentScript.value = mixedDialogueScript
-  currentBgImage.value = '/static/locations/confucian_temple_bg.jpg'
+  currentBgImage.value = 'locations/confucian_temple_bg.webp'
   dialogueVisible.value = true
 }
 
 const startTaskDialogue = () => {
   currentScript.value = taskDialogueScript
-  currentBgImage.value = '/static/locations/confucian_temple_bg.jpg'
+  currentBgImage.value = 'locations/confucian_temple_bg.webp'
   dialogueVisible.value = true
 }
 
 const startInteractiveNarrative = () => {
   currentScript.value = interactiveNarrativeScript
-  currentBgImage.value = '/static/locations/confucian_temple_bg.jpg'
+  currentBgImage.value = 'locations/confucian_temple_bg.webp'
   dialogueVisible.value = true
 }
 
 const startEndingTest = () => {
   currentScript.value = endingTestScript
-  currentBgImage.value = '/static/locations/confucian_temple_bg.jpg'
+  currentBgImage.value = 'locations/confucian_temple_bg.webp'
   dialogueVisible.value = true
 }
 
@@ -272,29 +282,31 @@ const interactiveNarrativeScript: any[] = [
     type: 'normal',
     speakerType: 'npc',
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '（林文渊正在整理古籍，看到你走近）年轻人，我看你气质不凡，来此有何贵干？',
+    avatar: 'npcs/lin_wenyuan.webp',
+    content:
+      '（林文渊正在整理古籍，看到你走近）年轻人，我看你气质不凡，来此有何贵干？',
   },
   {
     id: 'lin_wenyuan_choice_interactive',
     type: 'choice',
     speakerType: 'npc',
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
+    avatar: 'npcs/lin_wenyuan.webp',
     content: '作为揭阳学宫的讲学者，我可以为你解答关于儒学文脉的疑问。',
     options: [
       { label: '我想了解揭阳学宫的历史', value: 'history_path' },
       { label: '我想学习儒学经典', value: 'classics_path' },
-      { label: '我想直接挑战印章', value: 'seal_path' }
-    ]
+      { label: '我想直接挑战印章', value: 'seal_path' },
+    ],
   },
   {
     id: 'lin_wenyuan_history_explain',
     type: 'normal',
     speakerType: 'npc',
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '揭阳学宫始建于北宋庆历年间，至今已有近千年历史。这里曾是粤东地区的最高学府，培养了无数人才。',
+    avatar: 'npcs/lin_wenyuan.webp',
+    content:
+      '揭阳学宫始建于北宋庆历年间，至今已有近千年历史。这里曾是粤东地区的最高学府，培养了无数人才。',
   },
   {
     id: 'lin_wenyuan_history_question',
@@ -305,24 +317,26 @@ const interactiveNarrativeScript: any[] = [
       type: 'question',
       description: '揭阳学宫始建于哪个朝代？',
       options: ['唐朝', '宋朝', '明朝', '清朝'],
-      correctOption: 1 // '宋朝' 的索引
-    }
+      correctOption: 1, // '宋朝' 的索引
+    },
   },
   {
     id: 'lin_wenyuan_history_correct',
     type: 'normal',
     speakerType: 'npc',
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '非常好！你对揭阳历史文化确实有了解。既然你这么用心，我愿意传授你一些儒学礼仪知识。',
+    avatar: 'npcs/lin_wenyuan.webp',
+    content:
+      '非常好！你对揭阳历史文化确实有了解。既然你这么用心，我愿意传授你一些儒学礼仪知识。',
   },
   {
     id: 'lin_wenyuan_classics_teach',
     type: 'normal',
     speakerType: 'npc',
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '（林文渊从书架上取下一本《论语》）"学而时习之，不亦说乎？"学习儒家经典，最重要的是要懂得实践。',
+    avatar: 'npcs/lin_wenyuan.webp',
+    content:
+      '（林文渊从书架上取下一本《论语》）"学而时习之，不亦说乎？"学习儒家经典，最重要的是要懂得实践。',
   },
   {
     id: 'lin_wenyuan_etiquette_task',
@@ -333,8 +347,8 @@ const interactiveNarrativeScript: any[] = [
       type: 'question',
       description: '儒家最基础的礼仪是什么？',
       options: ['揖礼', '鞠躬', '抱拳', '作揖'],
-      correctOption: 0 // '揖礼' 的索引
-    }
+      correctOption: 0, // '揖礼' 的索引
+    },
   },
   {
     id: 'lin_wenyuan_ritual_task',
@@ -344,17 +358,18 @@ const interactiveNarrativeScript: any[] = [
     task: {
       type: 'action',
       description: '请向孔子像行揖礼，表达对先贤的敬意',
-      actionText: '行揖礼'
-    }
+      actionText: '行揖礼',
+    },
   },
   {
     id: 'lin_wenyuan_seal_earned',
     type: 'normal',
     speakerType: 'npc',
     name: '林文渊',
-    avatar: '/static/npcs/lin_wenyuan.png',
-    content: '恭喜你！你通过了所有考验，获得了儒学文脉印章。记住，这枚印章不仅是文脉的象征，更是传承的责任。',
-  }
+    avatar: 'npcs/lin_wenyuan.webp',
+    content:
+      '恭喜你！你通过了所有考验，获得了儒学文脉印章。记住，这枚印章不仅是文脉的象征，更是传承的责任。',
+  },
 ]
 
 // 事件处理

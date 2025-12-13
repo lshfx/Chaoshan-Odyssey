@@ -36,14 +36,13 @@
           :class="{ active: isFollowingUser }"
           @tap="toggleFollowMode"
         >
-          <cover-view class="control-icon">{{ isFollowingUser ? '🧭' : '🗺️' }}</cover-view>
+          <cover-view class="control-icon">{{
+            isFollowingUser ? '🧭' : '🗺️'
+          }}</cover-view>
         </cover-view>
 
         <!-- 重置视角按钮 -->
-        <cover-view
-          class="control-btn reset-btn"
-          @tap="resetMapView"
-        >
+        <cover-view class="control-btn reset-btn" @tap="resetMapView">
           <cover-view class="control-icon">📍</cover-view>
         </cover-view>
       </cover-view>
@@ -95,7 +94,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import {
+  ref,
+  computed,
+  onMounted,
+  onUnmounted,
+  watch,
+  getCurrentInstance,
+} from 'vue'
 import { useGameStore } from '@/stores/useGameStore'
 import { gameData } from '@/mock/gameData'
 import CustomNavbar from '@/components/CustomNavbar.vue'
@@ -106,6 +112,10 @@ import { useMapNavigation } from '@/composables/useMapNavigation'
 
 const gameStore = useGameStore()
 const navigation = useMapNavigation()
+
+// 获取当前实例以访问全局属性
+const instance = getCurrentInstance()
+const proxy = instance?.proxy as any
 
 // 解构出模板需要的属性，Vue 3 会自动解包这些 computed ref
 const { formatDistance, formatDuration, isLoadingRoute } = navigation
@@ -148,7 +158,7 @@ const mapCenter = computed(() => {
   if (isFollowingUser.value && gameStore.userLocation) {
     return {
       latitude: gameStore.userLocation.latitude,
-      longitude: gameStore.userLocation.longitude
+      longitude: gameStore.userLocation.longitude,
     }
   }
 
@@ -156,7 +166,7 @@ const mapCenter = computed(() => {
     return gameStore.userLocation
   }
 
-  return { latitude: 23.5360, longitude: 116.3560 }
+  return { latitude: 23.536, longitude: 116.356 }
 })
 
 const mapMarkers = computed(() => {
@@ -168,11 +178,11 @@ const mapMarkers = computed(() => {
       id: 1, // 数字ID，符合UniApp要求
       latitude: gameStore.userLocation.latitude,
       longitude: gameStore.userLocation.longitude,
-      iconPath: '/static/my-location.png',
+      iconPath: '/static/markers/my-location.png',
       width: 30,
       height: 30,
       anchor: { x: 0.5, y: 0.5 },
-      zIndex: 1000
+      zIndex: 1000,
     })
   }
 
@@ -193,8 +203,8 @@ const mapMarkers = computed(() => {
         borderRadius: 6,
         bgColor: '#FF4444',
         padding: 6,
-        display: 'ALWAYS'
-      }
+        display: 'ALWAYS',
+      },
     })
   }
 
@@ -213,7 +223,7 @@ const mapPolylines = computed(() => {
       dottedLine: false,
       arrowLine: true,
       borderWidth: 2,
-      borderColor: '#FFFFFF'
+      borderColor: '#FFFFFF',
     })
   }
 
@@ -226,7 +236,7 @@ const mapPolylines = computed(() => {
       dottedLine: true,
       arrowLine: false,
       borderWidth: 1,
-      borderColor: '#FFA500'
+      borderColor: '#FFA500',
     })
   }
 
@@ -244,7 +254,7 @@ const mapCircles = computed(() => {
       radius: 20,
       fillColor: 'rgba(0, 137, 123, 0.1)',
       strokeColor: 'rgba(0, 137, 123, 0.3)',
-      strokeWidth: 2
+      strokeWidth: 2,
     })
   }
 
@@ -255,8 +265,12 @@ const targetName = computed(() => gameStore.targetLocation?.name || '')
 const currentTargetId = computed(() => (gameStore.targetLocation as any)?.id)
 
 // 导航相关计算属性
-const navigationSymbol = computed(() => navigation.getNavigationSymbol(deviceHeading.value))
-const navigationInstruction = computed(() => navigation.currentNavigationInstruction.value)
+const navigationSymbol = computed(() =>
+  navigation.getNavigationSymbol(deviceHeading.value)
+)
+const navigationInstruction = computed(
+  () => navigation.currentNavigationInstruction.value
+)
 
 // 可用的POI列表
 const availablePOIs = computed(() => {
@@ -273,24 +287,24 @@ const availablePOIs = computed(() => {
       {
         id: 'test_jinxian',
         name: '进贤门',
-        latitude: 23.5360,
-        longitude: 116.3560,
-        icon: '🚪'
+        latitude: 23.536,
+        longitude: 116.356,
+        icon: '🚪',
       },
       {
         id: 'test_lion',
         name: '青狮文化区',
         latitude: 23.5338,
         longitude: 116.3715,
-        icon: '🦁'
+        icon: '🦁',
       },
       {
         id: 'test_tea',
         name: '功夫茶馆',
         latitude: 23.5316,
         longitude: 116.3642,
-        icon: '🍵'
-      }
+        icon: '🍵',
+      },
     ]
   }
 
@@ -331,7 +345,7 @@ const updatePointer = () => {
     const bearing = navigation.calculateBearing()
     // 雷达模式：指针显示目标相对于用户正前方的角度
     // 0° = 正前方，90° = 正右方，180° = 正后方，270° = 正左方
-    const relativeAngle = ((bearing - deviceHeading.value) + 360) % 360
+    const relativeAngle = (bearing - deviceHeading.value + 360) % 360
     pointerAngle.value = relativeAngle
   } else {
     // 无目标时指针归零（指向用户正前方）
@@ -353,7 +367,7 @@ const startCompass = () => {
       setTimeout(() => {
         startCompassListening()
       }, 200)
-    }
+    },
   })
 }
 
@@ -371,7 +385,7 @@ const startCompassListening = () => {
       } else {
         simulateCompass()
       }
-    }
+    },
   })
 }
 
@@ -407,7 +421,7 @@ const startTrackRecording = () => {
     if (gameStore.userLocation) {
       navigation.userTrackPolyline.value.push({
         latitude: gameStore.userLocation.latitude,
-        longitude: gameStore.userLocation.longitude
+        longitude: gameStore.userLocation.longitude,
       })
 
       if (navigation.userTrackPolyline.value.length > 200) {
@@ -435,11 +449,16 @@ const toggleFollowMode = () => {
 const resetMapView = () => {
   if (gameStore.userLocation && gameStore.targetLocation) {
     if (mapContext.value) {
-      const lat = (gameStore.userLocation.latitude + gameStore.targetLocation.latitude) / 2
-      const lng = (gameStore.userLocation.longitude + gameStore.targetLocation.longitude) / 2
+      const lat =
+        (gameStore.userLocation.latitude + gameStore.targetLocation.latitude) /
+        2
+      const lng =
+        (gameStore.userLocation.longitude +
+          gameStore.targetLocation.longitude) /
+        2
       mapContext.value.moveToLocation({
         latitude: lat,
-        longitude: lng
+        longitude: lng,
       })
     }
   } else if (gameStore.userLocation && mapContext.value) {
@@ -471,7 +490,7 @@ const handleSelectTarget = async (poi: any) => {
   uni.showToast({
     title: `目标已锁定：${poi.name}`,
     icon: 'none',
-    duration: 2000
+    duration: 2000,
   })
 
   // 重置导航状态
@@ -488,30 +507,44 @@ const closeArrivalModal = () => {
 }
 
 // 监听器
-watch(() => gameStore.targetLocation, async () => {
-  updatePointer()
-  await navigation.loadNavigationRoute()
-})
-
-watch(() => gameStore.userLocation, async () => {
-  if (navigation.hasTarget.value) {
+watch(
+  () => gameStore.targetLocation,
+  async () => {
     updatePointer()
     await navigation.loadNavigationRoute()
   }
+)
 
-  if (isFollowingUser.value && mapContext.value) {
-    mapContext.value.moveToLocation()
-  }
-})
+watch(
+  () => gameStore.userLocation,
+  async () => {
+    if (navigation.hasTarget.value) {
+      updatePointer()
+      await navigation.loadNavigationRoute()
+    }
 
-watch(() => navigation.distanceToTarget.value, (newDistance, oldDistance) => {
-  if (navigation.hasTarget.value && newDistance < 10 && oldDistance >= 10 && !showArrivalModal.value) {
-    showArrivalModal.value = true
-    uni.vibrateShort({
-      type: 'heavy'
-    })
+    if (isFollowingUser.value && mapContext.value) {
+      mapContext.value.moveToLocation()
+    }
   }
-})
+)
+
+watch(
+  () => navigation.distanceToTarget.value,
+  (newDistance, oldDistance) => {
+    if (
+      navigation.hasTarget.value &&
+      newDistance < 10 &&
+      oldDistance >= 10 &&
+      !showArrivalModal.value
+    ) {
+      showArrivalModal.value = true
+      uni.vibrateShort({
+        type: 'heavy',
+      })
+    }
+  }
+)
 
 onMounted(() => {
   mapContext.value = uni.createMapContext('navigationMap')
@@ -574,7 +607,7 @@ onUnmounted(() => {
 
     &.active {
       background: rgba(255, 215, 0, 0.9);
-      border-color: #FFD700;
+      border-color: #ffd700;
     }
 
     &:active {
@@ -611,14 +644,14 @@ onUnmounted(() => {
       width: 40px;
       height: 40px;
       border: 4px solid rgba(255, 215, 0, 0.2);
-      border-top: 4px solid #FFD700;
+      border-top: 4px solid #ffd700;
       border-radius: 50%;
       margin: 0 auto 16px;
       animation: spin 1s linear infinite;
     }
 
     .loading-text {
-      color: #FFD700;
+      color: #ffd700;
       font-size: 16px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
@@ -626,8 +659,12 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .arrival-overlay {
@@ -645,11 +682,11 @@ onUnmounted(() => {
 }
 
 .arrival-modal {
-  background: linear-gradient(135deg, #004D40 0%, #00695C 100%);
+  background: linear-gradient(135deg, #004d40 0%, #00695c 100%);
   border-radius: 24px;
   padding: 60px;
   text-align: center;
-  border: 2px solid #FFD700;
+  border: 2px solid #ffd700;
   box-shadow: 0 0 50px rgba(212, 175, 55, 0.4);
   animation: modalAppear 0.4s ease;
 
@@ -661,7 +698,7 @@ onUnmounted(() => {
   }
 
   .arrival-title {
-    color: #FFD700;
+    color: #ffd700;
     font-size: 36px;
     font-weight: 700;
     display: block;
@@ -670,7 +707,7 @@ onUnmounted(() => {
   }
 
   .arrival-subtitle {
-    color: #FFD700;
+    color: #ffd700;
     font-size: 28px;
     opacity: 0.8;
     display: block;
@@ -679,8 +716,8 @@ onUnmounted(() => {
   }
 
   .arrival-btn {
-    background: linear-gradient(135deg, #FFD700 0%, #00897B 100%);
-    color: #004D40;
+    background: linear-gradient(135deg, #ffd700 0%, #00897b 100%);
+    color: #004d40;
     border: none;
     border-radius: 25px;
     padding: 20px 60px;
@@ -702,8 +739,14 @@ onUnmounted(() => {
 }
 
 @keyframes iconBounce {
-  0% { transform: scale(0.3); }
-  50% { transform: scale(1.2); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.3);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 </style>

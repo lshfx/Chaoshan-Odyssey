@@ -39,11 +39,11 @@ export const worldStates: Record<string, CharacterWorldState> = {
         // 环境变化（可选）
         environmentChanges: {
           // 可以在触发特定剧情时更换背景图片或音乐
-          // bgImage: '/static/backgrounds/chen_linger_finale.jpg',
-          // bgm: '/static/audio/chen_linger_finale.mp3'
-        }
-      }
-    ]
+          // bgImage: 'backgrounds/chen_linger_finale.webp',
+          // bgm: 'audio/chen_linger_finale.mp3'
+        },
+      },
+    ],
   },
 
   // 可以在此添加其他角色的世界状态配置
@@ -71,7 +71,9 @@ export const worldStates: Record<string, CharacterWorldState> = {
  * @param characterId 角色ID
  * @returns 角色的世界状态配置，如果不存在则返回 undefined
  */
-export function getCharacterWorldState(characterId: string): CharacterWorldState | undefined {
+export function getCharacterWorldState(
+  characterId: string
+): CharacterWorldState | undefined {
   return worldStates[characterId]
 }
 
@@ -92,7 +94,7 @@ export function checkOverrideCondition(
 ): boolean {
   // 检查印章条件
   if (condition.requiredSeals) {
-    const hasAllSeals = condition.requiredSeals.every(sealId =>
+    const hasAllSeals = condition.requiredSeals.every((sealId) =>
       userInventory.includes(sealId)
     )
     if (!hasAllSeals) return false
@@ -105,7 +107,7 @@ export function checkOverrideCondition(
 
   // 检查标记条件
   if (condition.requiredFlags) {
-    const hasAllFlags = condition.requiredFlags.every(flag =>
+    const hasAllFlags = condition.requiredFlags.every((flag) =>
       userFlags.includes(flag)
     )
     if (!hasAllFlags) return false
@@ -146,7 +148,14 @@ export function resolveNpcId(
 
   // 检查每个覆写规则
   for (const override of worldState.overrides) {
-    if (checkOverrideCondition(override.condition, userInventory, userLevel, userFlags)) {
+    if (
+      checkOverrideCondition(
+        override.condition,
+        userInventory,
+        userLevel,
+        userFlags
+      )
+    ) {
       // 检查是否有针对该 POI 的映射
       const mappedNpcId = override.poiMapping[poiId]
       if (mappedNpcId) {

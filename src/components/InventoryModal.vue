@@ -65,7 +65,7 @@
           </view>
           <view class="detail-content">
             <image
-              :src="selectedItem?.icon || '/static/item-placeholder.png'"
+              :src="selectedItem?.icon || $imgHost + 'item-placeholder.webp'"
               class="detail-image"
               mode="aspectFit"
             />

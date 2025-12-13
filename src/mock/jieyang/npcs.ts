@@ -1,13 +1,14 @@
 import type { NPC, ScriptNode } from '../types'
+import { IMG_HOST } from '@/config/constants'
 
 export const npcs: NPC[] = [
   {
     id: 'lin_wenyuan',
     name: '林文渊',
     title: '学宫讲学者',
-    avatar: '/static/npcs/lin_wenyuan.png',
+    avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
     location: 'jieyang_confucian_temple',
-    background: '/static/locations/confucian_temple_bg.jpg',
+    background: IMG_HOST + 'locations/confucian_temple_bg.webp',
     description: '揭阳学宫的资深讲学者，守护儒学文脉印章',
     personality: '严谨博学，注重礼仪',
     sealId: 'seal_one',
@@ -36,7 +37,7 @@ export const npcs: NPC[] = [
             id: 'act1_intro',
             type: 'normal',
             speaker: '陈灵儿',
-            avatar: '/static/avatars/chen_linger.png',
+            avatar: 'avatars/chen_linger.webp',
             content:
               '（站在大成殿前深吸一口气）这里就是揭阳学宫...父亲笔记里提到的第一枚印章就在林先生手中。不管怎样，我必须拿到它。',
             nextId: 'act1_meet_lin',
@@ -80,7 +81,7 @@ export const npcs: NPC[] = [
             id: 'act1_leave_choice',
             type: 'normal',
             speaker: '陈灵儿',
-            avatar: '/static/avatars/chen_linger.png',
+            avatar: 'avatars/chen_linger.webp',
             content:
               '（你感到一阵心烦意乱，决定先离开学宫，整理一下思绪。晚些时候再回来找林先生吧。）',
             nextId: 'act1_leave',
@@ -96,7 +97,7 @@ export const npcs: NPC[] = [
             id: 'act1_branch_strict',
             type: 'normal',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content:
               '（动作停顿了一下，冷淡转身）公事？那便按公事规矩办。想拿印章，先过我这关。',
             nextId: 'act1_task_bow_intro',
@@ -106,7 +107,7 @@ export const npcs: NPC[] = [
             id: 'act1_branch_sincere',
             type: 'normal',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content:
               '（眼神柔和了一些）你和你母亲长得真像……罢了。虽然有情分在，但学宫的规矩不能废。',
             nextId: 'act1_task_bow_intro',
@@ -119,7 +120,7 @@ export const npcs: NPC[] = [
             id: 'act1_task_bow_intro',
             type: 'normal',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content: '孔圣人面前，先正衣冠，再行揖礼。让我看看你的诚意。',
             nextId: 'act1_task_bow',
           },
@@ -133,7 +134,7 @@ export const npcs: NPC[] = [
             id: 'act1_task_quiz_intro',
             type: 'normal',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content: '礼数尚可。接下来听题：揭阳学宫始建于哪个朝代？',
             nextId: 'act1_task_quiz',
           },
@@ -148,7 +149,7 @@ export const npcs: NPC[] = [
             id: 'act1_fail_quiz',
             type: 'normal',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content: '（摇头）连这个都不知道？回去多读几年书再来吧！',
             nextId: 'act1_retry_choice',
           },
@@ -176,7 +177,7 @@ export const npcs: NPC[] = [
             id: 'act1_puzzle_success',
             type: 'normal',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content:
               '（抚须点头）不错，是个可造之材。这枚【儒学文脉章】便借给你一用。',
             trigger: 'grant_seal_one', // ✅ 立即发放印章
@@ -186,7 +187,7 @@ export const npcs: NPC[] = [
             id: 'act1_hint_inspect_pre',
             type: 'normal',
             speaker: '陈灵儿',
-            avatar: '/static/avatars/chen_linger.png',
+            avatar: 'avatars/chen_linger.webp',
             content:
               '（接过印章，指腹划过侧面时，似乎摸到了一丝细微的裂痕...这印章似乎藏着什么秘密？）\n【系统提示：稍后请进入背包仔细调查印章】',
             nextId: 'act1_pre_present',
@@ -199,7 +200,7 @@ export const npcs: NPC[] = [
             id: 'act1_pre_present',
             type: 'normal',
             speaker: '陈灵儿',
-            avatar: '/static/avatars/chen_linger.png',
+            avatar: 'avatars/chen_linger.webp',
             content:
               '（不过当务之急，是向林先生打听当年的事。若能让他相信我是故人之后...）',
             nextId: 'act1_present_badge',
@@ -225,7 +226,7 @@ export const npcs: NPC[] = [
             id: 'act1_reveal_badge',
             type: 'normal',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan_shocked.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content:
               '（大惊失色，颤抖着接过腰牌）这...这半月纹...孩子，当年你父母追查的是一个“左手有六指”的人！切记！',
             trigger: 'grant_clue_six_fingers', // 发放核心线索
@@ -237,7 +238,7 @@ export const npcs: NPC[] = [
             id: 'act1_conceal_badge',
             type: 'normal',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content:
               '既然印章已到手，就请回吧。我也不能多说，只能告诉你，以后办案要小心身边那些“总是戴着手套”的人。',
             trigger: 'grant_clue_gloves', // 发放普通线索
@@ -271,7 +272,7 @@ export const npcs: NPC[] = [
             id: 'completed_hint',
             type: 'end',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content:
               '你已经证明了自己的实力。听说古城老街那边锣鼓喧天，或许你应该去见见陈狮魁班主。',
           },
@@ -279,7 +280,7 @@ export const npcs: NPC[] = [
             id: 'completed_chat_reading',
             type: 'end',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content:
               '（手不释卷）"学而不思则罔，思而不学则殆"。拿到了印章也要多读书啊。',
           },
@@ -287,7 +288,7 @@ export const npcs: NPC[] = [
             id: 'completed_chat_care',
             type: 'end',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content:
               '那枚儒学文脉章传了几百年，切记妥善保管，莫要让文脉断了传承。',
           },
@@ -295,7 +296,7 @@ export const npcs: NPC[] = [
             id: 'completed_chat_history',
             type: 'end',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content:
               '揭阳学宫始建于北宋，历经千年风雨。你要守护的不仅是印章，更是这段文脉历史。',
           },
@@ -303,7 +304,7 @@ export const npcs: NPC[] = [
             id: 'completed_chat_wisdom',
             type: 'end',
             speaker: '林文渊',
-            avatar: '/static/npcs/lin_wenyuan.png',
+            avatar: IMG_HOST + 'npcs/lin_wenyuan.webp',
             content:
               '（看着你离去的背影）"知者不惑，仁者不忧，勇者不惧"。孩子，你的路还很长。',
           },
@@ -349,9 +350,9 @@ export const npcs: NPC[] = [
     id: 'chen_shikui',
     name: '陈狮魁',
     title: '青狮传承人',
-    avatar: '/static/npcs/chen_shikui.png',
+    avatar: IMG_HOST + 'npcs/chen_shikui.webp',
     location: 'lion_culture_area',
-    background: '/static/locations/lion_culture_bg.jpg',
+    background: IMG_HOST + 'locations/lion_culture_bg.webp',
     description: '青狮文化的传承者，守护青狮非遗印章',
     personality: '刚猛豪爽，吃软不吃硬',
     sealId: 'seal_two',
@@ -387,7 +388,7 @@ export const npcs: NPC[] = [
             id: 'act2_observe',
             type: 'normal',
             speaker: '陈灵儿',
-            avatar: '/static/avatars/chen_linger.png',
+            avatar: 'avatars/chen_linger.webp',
             content:
               '（这人看起来脾气暴躁，连林先生都对他颇有微词...想要拿到印章，恐怕没那么容易。）',
             nextId: 'act2_choice_attitude',
@@ -422,7 +423,7 @@ export const npcs: NPC[] = [
             id: 'act2_branch_force',
             type: 'normal',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content:
               '（冷笑一声）哼！官威好大！印章可以给你，但你别想从我这听到半句废话。不过，规矩就是规矩，想拿印章，先过这关！',
             nextId: 'act2_task_intro',
@@ -432,7 +433,7 @@ export const npcs: NPC[] = [
             id: 'act2_branch_skill',
             type: 'normal',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content:
               '（眼神一亮，上下打量你）哦？有点意思。像当年那个护卫的种！来，让我看看你的身手！',
             nextId: 'act2_task_intro',
@@ -445,7 +446,7 @@ export const npcs: NPC[] = [
             id: 'act2_task_intro',
             type: 'normal',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content: '青狮舞讲究"动如雷霆，静如处子"。跟上我的动作！',
             nextId: 'act2_do_action',
           },
@@ -459,7 +460,7 @@ export const npcs: NPC[] = [
             id: 'act2_quiz_intro',
             type: 'normal',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content: '身法尚可。再考考你的眼力！',
             nextId: 'act2_do_quiz',
           },
@@ -475,7 +476,7 @@ export const npcs: NPC[] = [
             id: 'act2_fail',
             type: 'normal',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content: '（摆摆手）连狮纹都看不懂，回去练练再来吧。',
             nextId: 'act2_retry_choice',
           },
@@ -503,7 +504,7 @@ export const npcs: NPC[] = [
             id: 'act2_success',
             type: 'normal',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content: '好！身手不错，也是个懂行的人。这枚【青狮非遗章】归你了。',
             trigger: 'grant_seal_two', // ✅ 立即发放印章
             nextId: 'act2_reveal_mark',
@@ -524,7 +525,7 @@ export const npcs: NPC[] = [
             id: 'act2_interrupt',
             type: 'normal',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content: '慢着！你腰上那个...那个半月形的痕迹...',
             nextId: 'act2_choice_mark',
           },
@@ -557,7 +558,7 @@ export const npcs: NPC[] = [
             id: 'act2_confirm_identity',
             type: 'normal',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content:
               '（激动地拍大腿）错不了！果然是故人之女！孩子，既然你是那人的后代，有些事我必须告诉你。',
             nextId: 'act2_clue_reveal',
@@ -566,7 +567,7 @@ export const npcs: NPC[] = [
             id: 'act2_clue_reveal',
             type: 'normal',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content:
               '当年那个抢走印章的人，和我交过手。他被我在手背上狠狠砍了一刀，留下了【狮纹伤疤】。这标记这辈子都消不掉！',
             trigger: 'grant_clue_lion_scar', // ✅ 发放核心线索
@@ -578,7 +579,7 @@ export const npcs: NPC[] = [
             id: 'act2_miss_clue',
             type: 'normal',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content:
               '（眼神黯淡下去）也是...世上相似的人多了去了。行吧，江湖路远，好自为之。',
             nextId: 'act2_end_normal',
@@ -611,7 +612,7 @@ export const npcs: NPC[] = [
             id: 'completed_hint',
             type: 'end',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content:
               '你这身手不错啊！不过真正的考验还在后头。听说进贤门那边有新的线索。',
           },
@@ -619,7 +620,7 @@ export const npcs: NPC[] = [
             id: 'completed_chat_lion',
             type: 'end',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content:
               '（擦拭着狮头）青狮舞要的是那股子精气神！你这年轻人，有当年那个护卫的种。',
           },
@@ -627,7 +628,7 @@ export const npcs: NPC[] = [
             id: 'completed_chat_courage',
             type: 'end',
             speaker: '陈狮魁',
-            avatar: '/static/npcs/chen_shikui.png',
+            avatar: IMG_HOST + 'npcs/chen_shikui.webp',
             content:
               '功夫茶要静，舞狮要动！一静一动，才是咱们潮汕人的本事。印章要保管好啊。',
           },
@@ -662,9 +663,9 @@ export const npcs: NPC[] = [
     id: 'su_chaweng',
     name: '苏茶翁',
     title: '工夫茶社老师傅',
-    avatar: '/static/npcs/su_chaweng.png',
+    avatar: IMG_HOST + 'npcs/su_chaweng.webp',
     location: 'kungfu_tea_house',
-    background: '/static/locations/tea_house_bg.jpg',
+    background: IMG_HOST + 'locations/tea_house_bg.webp',
     description: '工夫茶大师，守护茶韵文化印章',
     personality: '温和细致，注重礼仪',
     sealId: 'seal_three',
@@ -718,9 +719,9 @@ export const npcs: NPC[] = [
     id: 'zheng_pike',
     name: '郑批客',
     title: '侨批文物馆守护人',
-    avatar: '/static/npcs/zheng_pike.png',
+    avatar: IMG_HOST + 'npcs/zheng_pike.webp',
     location: 'qiaopi_museum',
-    background: '/static/locations/qiaopi_museum_bg.jpg',
+    background: IMG_HOST + 'locations/qiaopi_museum_bg.webp',
     description: '侨批文化的守护者，守护侨批信义印章',
     personality: '怀旧重情，注重信义',
     sealId: 'seal_four',
@@ -768,9 +769,9 @@ export const npcs: NPC[] = [
     id: 'li_chengshou',
     name: '李城守',
     title: '进贤门城门守史',
-    avatar: '/static/npcs/li_chengshou.png',
+    avatar: IMG_HOST + 'npcs/li_chengshou.webp',
     location: 'jinxian_gate',
-    background: '/static/locations/jinxian_gate_bg.jpg',
+    background: IMG_HOST + 'locations/jinxian_gate_bg.webp',
     description: '进贤门的守护者，掌管老爷保号章',
     personality: '威严正直，注重传统',
     sealId: 'laoye_baohao_seal',
@@ -828,9 +829,9 @@ export const npcs: NPC[] = [
     id: 'cai_fusheng',
     name: '蔡福生',
     title: '醉仙楼老板',
-    avatar: '/static/npcs/cai_fusheng_boss.png',
+    avatar: IMG_HOST + 'npcs/cai_fusheng_boss.webp',
     location: 'jinxian_gate',
-    background: '/static/locations/jinxian_gate_bg.jpg',
+    background: IMG_HOST + 'locations/jinxian_gate_bg.webp',
     description: '表面是和气生财的老板，实则是当年的掠夺者后代',
     personality: '伪善、狡诈',
     sealId: 'seal_three_fake', // 默认持有的伪造物
@@ -857,7 +858,7 @@ export const npcs: NPC[] = [
             id: 'act3_meet_cai',
             type: 'normal',
             speaker: '蔡福生',
-            avatar: '/static/npcs/cai_fusheng_boss.png',
+            avatar: IMG_HOST + 'npcs/cai_fusheng_boss.webp',
             content:
               '哟，这不是陈捕快吗？怎么有空来进贤门吹风？听说你在找老物件，巧了，我这儿正好收了一枚印章。',
             nextId: 'act3_get_fake',
@@ -895,7 +896,7 @@ export const npcs: NPC[] = [
             id: 'act3_confront',
             type: 'normal',
             speaker: '陈灵儿',
-            avatar: '/static/avatars/chen_linger.png',
+            avatar: 'avatars/chen_linger.webp',
             content:
               '（眼神犀利）蔡老板，生意人讲究诚信。但这印章……恐怕有问题吧？',
             nextId: 'act3_present_fake',
@@ -921,7 +922,7 @@ export const npcs: NPC[] = [
             id: 'act3_cai_deny',
             type: 'normal',
             speaker: '蔡福生',
-            avatar: '/static/npcs/cai_fusheng_boss.png',
+            avatar: IMG_HOST + 'npcs/cai_fusheng_boss.webp',
             content:
               '（脸色一僵，随即恢复正常）假的？哎呀！我也是被人骗了！但我可是正经商人，陈捕快可不能含血喷人啊。',
             nextId: 'act3_final_choice',
