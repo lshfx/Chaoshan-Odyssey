@@ -3,7 +3,7 @@
     <!-- 启动页 -->
     <view v-if="showStartScreen" class="start-screen">
       <image
-        :src="$imgHost + 'background/background_start.webp'"
+        :src="imgHost + 'background/background_start.webp'"
         class="start-bg"
         mode="aspectFill"
       />
@@ -61,7 +61,7 @@
       <view v-if="currentUser" class="character-card">
         <image
           class="character-avatar"
-          :src="currentUser?.avatar || $imgHost + 'avatar-placeholder.webp'"
+          :src="currentUser?.avatar || imgHost + 'avatar-placeholder.webp'"
           mode="aspectFill"
         />
         <view class="character-info">
@@ -110,7 +110,7 @@
               <view class="card-container">
                 <image
                   :src="
-                    character?.avatar || $imgHost + 'avatar-placeholder.webp'
+                    character?.avatar || imgHost + 'avatar-placeholder.webp'
                   "
                   mode="aspectFit"
                   class="card-avatar"
@@ -188,6 +188,9 @@ const gameStore = useGameStore()
 // 获取当前实例以访问全局属性
 const instance = getCurrentInstance()
 const proxy = instance?.proxy as any
+
+// 计算$imgHost的响应式引用
+const imgHost = computed(() => proxy?.$imgHost || IMG_HOST)
 
 const showStartScreen = ref(true) // 启动页显示状态，默认为true
 const showCityModal = ref(false)

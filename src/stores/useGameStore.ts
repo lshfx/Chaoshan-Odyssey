@@ -528,7 +528,7 @@ export const useGameStore = defineStore('game', () => {
         missionStatus: missionStatus.value,
         // 🔥 核心修复：保存 storyStage 和 unlockedPoiIds
         storyStage: storyStage.value,
-        unlockedPoiIds: Array.from(unlockedPoiIds.value), // Set转Array
+        unlockedPoiIds: unlockedPoiIds.value, // 直接保存数组
         completedPoiIds: completedPoiIds.value,
         playerStats: playerStats.value,
         storyHistory: storyHistory.value,
@@ -594,8 +594,8 @@ export const useGameStore = defineStore('game', () => {
         // 🔥 核心修复：恢复 storyStage（默认为0）
         storyStage.value = savedData.storyStage ?? 0
 
-        // 🔥 核心修复：恢复 unlockedPoiIds（Array转Set）
-        unlockedPoiIds.value = new Set(savedData.unlockedPoiIds || [])
+        // 🔥 核心修复：恢复 unlockedPoiIds（保持为数组）
+        unlockedPoiIds.value = savedData.unlockedPoiIds || []
 
         // 恢复其他状态
         completedPoiIds.value = savedData.completedPoiIds || []
